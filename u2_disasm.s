@@ -33,6 +33,18 @@ SAVEY   := $478
 
 OLDCH   := $47B
 MODE    := $4FB
+        ;; Bit 7 = Escape Mode
+        ;; Bit 6 = MouseText active
+        ;; Bit 5 = ??? set when "normal"
+        ;; Bit 4 = ??? set when "normal"
+        ;; Bit 3 = ??? unused ???
+        ;; Bit 2 = ??? unused ???
+        ;; Bit 1 = ??? used for ???
+        ;; Bit 0 = ??? used for ???
+M_ESC   = %10000000
+M_MOUSE = %01000000
+M_NORMAL= %00110000
+
 OURCH   := $57B
 OURCV   := $5FB
 CHAR    := $67B                 ; Unused
@@ -183,7 +195,7 @@ LC376:  ldx     SAVEX
         sta     $0200,x
 LC38B:  jsr     LC877
         cmp     #$9B            ; escape?
-        beq     LC3C6
+        beq     EscapeMode
         cmp     #$8D            ; return?
         bne     LC39B
         pha
@@ -210,19 +222,27 @@ LC3BA:  ldx     SAVEX
         ldy     SAVEY
 SETV:   rts                     ; has V flag set
 
-LC3C6:  lda     #$80
-        tsb     MODE            ; set high bit
+;;; ============================================================
+;;; Escape Mode
+
+EscapeMode:
+        lda     #M_ESC
+        tsb     MODE
         jsr     LC850
         jsr     LC933
         cmp     #$98            ; ctrl-x (clear)
         beq     LC3AA
-        lda     MODE
-        bmi     LC3C6           ; test high bit
+        lda     MODE            ; still in escape mode?
+        bmi     EscapeMode
         bra     LC38B
 
+;;; ============================================================
+
+        ;; Unreached???
         bit     LCFFF
         jmp     LCEE7
 
+;;; ============================================================
 
         brk
         brk
@@ -231,6 +251,9 @@ LC3C6:  lda     #$80
         brk
         brk
 
+;;; ============================================================
+
+        ;; Unreached???
         bit     LCFFF
         jmp     LCE18
 
@@ -449,10 +472,10 @@ LC4CE:  bbr0    $F0,LC4AB
 
 ;;; ============================================================
 
-LC800:  lda     #$30            ; set to normal state (%00110000)
+LC800:  lda     #M_NORMAL
         sta     MODE
         jsr     LCBBD
-        jsr     LCE3C
+        jsr     DoSETWND
         jmp     DoHomeAndClear
 
 LC80E:  ldy     #$00
@@ -476,7 +499,7 @@ Do40Col:
         php
         jsr     LCBB6
         jsr     LCADA
-        jsr     LCE3C
+        jsr     DoSETWND
         plp
         bpl     rts1
         jmp     LCC4E
@@ -564,7 +587,7 @@ LC8B4:  jsr     LC992
 LC8C1:  lda     CHAR
         and     #$7F
         cmp     #$20
-        bcc     LC8F7
+        bcc     DoCtrlCharOut
         ldy     CH
         cpy     WNDWDTH
         bcc     LC8D3
@@ -589,9 +612,11 @@ DoNothing:
         rts
 
 ;;; ============================================================
+;;; Output control character handling
 
         ;; Input is char, < $20
-LC8F7:  sec
+DoCtrlCharOut:
+        sec
         sbc     #$07
         bcc     DoNothing
         asl     a
@@ -626,9 +651,11 @@ jt1:
         .addr   DoUp            ; $1F Ctrl-_ Up
 
 ;;; ============================================================
+;;; GetLn handling
+;;; For Escape key sequences
 
 LC933:  pha
-        lda     #$80
+        lda     #M_ESC
         trb     MODE            ; clear high bit
         pla
         and     #$7F
@@ -655,52 +682,53 @@ LC955:  txa
 
         ;; Character match table
 code_table:
-        .byte   '@'
-        .byte   'A'
-        .byte   'B'
-        .byte   'C'
-        .byte   'D'
-        .byte   'E'
-        .byte   'F'
-        .byte   'I'
-        .byte   'J'
-        .byte   'K'
-        .byte   'M'
-        .byte   $0b             ; up
-        .byte   $0a             ; down
-        .byte   $08             ; left
-        .byte   $15             ; right
-        .byte   '4'             ; 40 col
-        .byte   '8'             ; 80 col
-        .byte   $11             ; Ctrl+Q
+        .byte   '@'             ; Escape @ - clear, home & exit mode
+        .byte   'A'             ; Escape A - right & exit mode
+        .byte   'B'             ; Escape B - left & exit mode
+        .byte   'C'             ; Escape C - down & exit mode
+        .byte   'D'             ; Escape D - up & exit mode
+        .byte   'E'             ; Escape E - clear EOL & exit mode
+        .byte   'F'             ; Escape F - clear EOS & exit mode
+        .byte   'I'             ; Escape I - up
+        .byte   'J'             ; Escape J - left
+        .byte   'K'             ; Escape K - right
+        .byte   'M'             ; Escape M - down
+        .byte   $0b             ; Escape up - up
+        .byte   $0a             ; Escape down - down
+        .byte   $08             ; Escape left - left
+        .byte   $15             ; Escape right - right
+        .byte   '4'             ; Escape 4 - 40 col mode
+        .byte   '8'             ; Escape 8 - 80 col mode
+        .byte   $11             ; Escape Ctrl+Q - deactivate
 
         .byte   $00             ; sentinel
 
 
         ;; Jump table
 jt2:
-        .addr   DoHomeAndClear  ; '@'
-        .addr   DoForwardSpace  ; 'A'
-        .addr   DoBackspace     ; 'B'
-        .addr   DoLineFeed      ; 'C'
-        .addr   DoUp            ; 'D'
-        .addr   DoClearEOL      ; 'E'
-        .addr   DoClearEOS      ; 'F'
-        .addr   LC9AD           ; 'I'
-        .addr   LC9BC           ; 'J'
-        .addr   LC9B7           ; 'K'
-        .addr   LC9B2           ; 'M'
-        .addr   LC9AD           ; up
-        .addr   LC9B2           ; down
-        .addr   LC9BC           ; left
-        .addr   LC9B7           ; right
-        .addr   Do40Col         ; 40 col
-        .addr   Do80Col         ; 80 col
-        .addr   DoQuit          ; Ctrl+Q
+        .addr   DoHomeAndClear  ; Escape @ - clear, home & exit mode
+        .addr   DoForwardSpace  ; Escape A - right & exit mode
+        .addr   DoBackspace     ; Escape B - left & exit mode
+        .addr   DoLineFeed      ; Escape C - down & exit mode
+        .addr   DoUp            ; Escape D - up & exit mode
+        .addr   DoClearEOL      ; Escape E - clear EOL & exit mode
+        .addr   DoClearEOS      ; Escape F - clear EOS & exit mode
+        .addr   DoUpRemain      ; Escape I - up
+        .addr   DoLeftRemain    ; Escape J - left
+        .addr   DoRightRemain   ; Escape K - right
+        .addr   DoDownRemain    ; Escape M - down
+        .addr   DoUpRemain      ; Escape up - up
+        .addr   DoDownRemain    ; Escape down - down
+        .addr   DoLeftRemain    ; Escape left - left
+        .addr   DoRightRemain   ; Escape right - right
+        .addr   Do40Col         ; Escape 4 - 40 col mode
+        .addr   Do80Col         ; Escape 8 - 80 col mode
+        .addr   DoQuit          ; Escape Ctrl+Q - deactivate
 
 ;;; ============================================================
 
-LC992:  lda     KBD
+LC992:
+        lda     KBD
         cmp     #$93            ; Ctrl-S
         bne     rts3
         bit     KBDSTRB
@@ -711,21 +739,30 @@ LC992:  lda     KBD
         bit     KBDSTRB
 rts3:   rts
 
+;;; ============================================================
+
+        ;; Unused???
         nop
         jmp     LCB60
 
-LC9AD:  jsr     DoUp
-        bra     LC9BF
+;;; ============================================================
 
-LC9B2:  jsr     DoLineFeed
-        bra     LC9BF
+DoUpRemain:
+        jsr     DoUp
+        bra     Remain
 
-LC9B7:  jsr     DoForwardSpace
-        bra     LC9BF
+DoDownRemain:
+        jsr     DoLineFeed
+        bra     Remain
 
-LC9BC:  jsr     DoBackspace
-LC9BF:  lda     #$80            ; set mode bits %1xxxxxxx
-        jmp     LCA0A
+DoRightRemain:
+        jsr     DoForwardSpace
+        bra     Remain
+
+DoLeftRemain:
+        jsr     DoBackspace
+Remain: lda     #M_ESC          ; stay in Escape Mode
+        jmp     SetModeBits
 
 DoInverse:
         ldy     #$3F
@@ -741,38 +778,49 @@ Do80Col:
         php
         jsr     LCBBD
         jsr     LCADA
-        jsr     LCE3C
+        jsr     DoSETWND
         plp
         bmi     rts4
         jmp     LCBFE
 
 DoQuit:
         jsr     Do40Col
-        jsr     LCE51
-        jsr     LCE4B
-        lda     #$17
-        ldx     #$00
+        jsr     DoSETVID
+        jsr     DoSETKBD
+        lda     #23
+        ldx     #0
         jsr     LCA80
+
         lda     #$FF
         sta     MODE            ; set all mode bits (???)
+
         lda     #$98
         rts
 
+;;; ============================================================
+;;; Adusting MODE Bits
+
 LC9F8:  lda     #$FC            ; clear mode bits %xxxxxx00
-        jsr     LCA03
+        jsr     PreserveModeBits
         lda     #$32            ; set mode bits   %xx11xx1x
-        bra     LCA0A
+        bra     SetModeBits
 
 DoDisableMouseText:
-        lda     #$40            ; clear mode bits %0x00000
-LCA03:  and     MODE
-        bra     LCA0D
+        lda     #M_MOUSE        ; clear bit BUG: Should be ~M_MOUSE
+PreserveModeBits:
+        and     MODE
+        bra     StoreMode
 
 DoEnableMouseText:
-        lda     #$40            ; set mode bits   %x1xxxxxx - enable MT mode
-LCA0A:  ora     MODE
-LCA0D:  sta     MODE
+        lda     #M_MOUSE
+
+SetModeBits:
+        ora     MODE
+StoreMode:
+        sta     MODE
         rts
+
+;;; ============================================================
 
 LCA11:  lda     CHAR            ; character to read/print
         sec
@@ -789,13 +837,15 @@ LCA11:  lda     CHAR            ; character to read/print
         jsr     LCA82
 LCA2C:  lda     $05F8
         cmp     WNDWDTH
-        bcs     LCA35
+        bcs     :+
         sta     CH
-LCA35:  rts
+:       rts
 
 LCA36:  pla
         sta     $05F8
         rts
+
+;;; ============================================================
 
 DoForwardSpace:
         inc     CH
@@ -804,38 +854,51 @@ DoForwardSpace:
         bcs     DoReturn
         rts
 
+;;; ============================================================
+
 DoBackspace:
         lda     CH
-        beq     LCA4B
+        beq     :+
         dec     CH
-LCA4A:  rts
+rts5:   rts
 
-LCA4B:  lda     CV
-        beq     LCA4A
+:       lda     CV
+        beq     rts5
         lda     WNDWDTH
         dec     a
         sta     CH
 
+;;; ============================================================
+
 DoUp:
         lda     CV
-        beq     LCA4A
+        beq     rts5
         dec     CV
         bra     LCA84
 
+;;; ============================================================
+
 DoReturn:
         stz     CH
+        ;; fall through
+
+;;; ============================================================
 
 DoLineFeed:
         lda     CV
-        cmp     #$17            ; 23
+        cmp     #23
         bcs     DoScrollUp
         inc     CV
         bra     LCA84
+
+;;; ============================================================
 
 DoHome:
         lda     WNDTOP
         ldx     #$00
         bra     LCA80
+
+;;; ============================================================
 
 DoClearLine:
         lda     CH
@@ -846,11 +909,15 @@ DoClearLine:
         sta     CH
         rts
 
+;;; ============================================================
+
 LCA7A:  lda     $06F8
         ldx     $0778
 LCA80:  stx     CH
 LCA82:  sta     CV
-LCA84:  jmp     LCE57
+LCA84:  jmp     DoMON_VTAB
+
+;;; ============================================================
 
 DoScrollUp:
         lda     CH
@@ -904,14 +971,21 @@ LCADA:  lda     CV
         sta     $0778
         rts
 
+;;; ============================================================
+
+;;; Load X,Y with address of a routine -1 (for `ROMCall`)
 .macro LDXY addr
         ldx     #.hibyte(addr-1)
         ldy     #.lobyte(addr-1)
 .endmacro
 
+;;; ============================================================
+
 DoBell:
         LDXY    BELLB
-        jmp     LCE6D
+        jmp     ROMCall
+
+;;; ============================================================
 
 DoScroll:
         jsr     LCADA
@@ -1029,7 +1103,7 @@ LCBBD:  sta     SET80COL
 LCBC7:  lda     MODE            ; all mode bits set?
         cmp     #$FF
         beq     LCBEA
-        and     #$80            ; test high bit
+        and     #M_ESC          ; escape mode?
         beq     LCBEA
         jsr     LCEBE
         sta     OLDCH
@@ -1038,7 +1112,7 @@ LCBC7:  lda     MODE            ; all mode bits set?
         bra     LCBF9
 
 LCBDE:  lda     MODE            ; test high bit
-        and     #$80
+        and     #M_ESC          ; escape mode?
         beq     LCBEA
         lda     OLDCH
         bra     LCBF9
@@ -1317,6 +1391,7 @@ LCDE2:  jsr     LCE2E
         .byte   $54
         ora     $FF00
 
+;;; ============================================================
 
 LCDF7:  sta     WRCARDRAM
         lda     #$00
@@ -1354,36 +1429,56 @@ LCE2E:  pha
 LCE3A:  pla
         rts
 
-LCE3C:  lda     #$00
-        bit     RDTEXT
-        bmi     LCE45
-        lda     #$14
+;;; ============================================================
 
-LCE45:  LDXY    SETWND
-        bra     LCE6D
+DoSETWND:
+        lda     #0              ; set cursor to row 0
+        bit     RDTEXT          ; unless graphics mode
+        bmi     :+
+        lda     #20             ; then use row 20
+:       LDXY    SETWND
+        bra     ROMCall
 
-LCE4B:  LDXY    SETKBD
-        bra     LCE6D
+;;; ============================================================
 
-LCE51:  LDXY    SETVID
-        bra     LCE6D
+DoSETKBD:
+        LDXY    SETKBD
+        bra     ROMCall
 
-LCE57:  LDXY    MON_VTAB
-        bra     LCE6D
+;;; ============================================================
+
+DoSETVID:
+        LDXY    SETVID
+        bra     ROMCall
+
+;;; ============================================================
+
+DoMON_VTAB:
+        LDXY    MON_VTAB
+        bra     ROMCall
+
+;;; ============================================================
 
 DoClearEOS:
         LDXY    CLREOP
-        bra     LCE6D
+        bra     ROMCall
+
+;;; ============================================================
 
 DoHomeAndClear:
         LDXY    HOME
-        bra     LCE6D
+        bra     ROMCall
+
+;;; ============================================================
 
 DoClearEOL:
         LDXY    CLREOL
 
+;;; ============================================================
+
 ;;; A = character, X,Y = ROM address-1 (return value to push to stack)
-LCE6D:  sta     TEMP2
+ROMCall:
+        sta     TEMP2
         bit     RDLCRAM
         php
         bit     RDLCBNK2
