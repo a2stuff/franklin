@@ -7,6 +7,8 @@
         .setcpu "65C02"
         .include "opcodes.inc"
 
+;;; Zero Page
+
 WNDLFT  := $20
 WNDWDTH := $21
 WNDTOP  := $22
@@ -26,6 +28,12 @@ A4L     := $42
 A4H     := $43
 RNDL    := $4E
 RNDH    := $4F
+
+;;; Page 3 Vectors
+
+XFERVEC := $3ED
+
+;;; Screen Holes
 
 SAVEA   := $4F8
 SAVEX   := $578
@@ -53,6 +61,8 @@ TEMP1   := $77B                 ; Unused
 OLDBASL := $77B
 TEMP2   := $7FB
 OLDBASH := $7FB
+
+;;; I/O Soft Switches
 
 KBD     := $C000
 CLR80COL:= $C000
@@ -83,6 +93,17 @@ ROMIN2  := $C082
 LCBANK2 := $C083
 LCBANK1 := $C08B
 
+;;; Documented Firmware Entry Points
+
+C3KeyIn := $C305
+C3COut1 := $C307
+AUXMOVE := $C311
+XFER    := $C314
+
+CLRROM  := $CFFF
+
+;;; Monitor ROM
+
 BELLB   := $FBE2
 SETWND  := $FB4B
 SETKBD  := $FE89
@@ -92,8 +113,6 @@ CLREOP  := $FC42
 HOME    := $FC58
 CLREOL  := $FC9C
 
-AUXMOVE := $C311
-XFER    := $C314
 
 ;;; ============================================================
 
@@ -104,11 +123,12 @@ LC300:  bit     SETV            ; V = init
         bra     LC33A
 
         ;; Input
+        .assert * = C3KeyIn, error, "Entry point mismatch"
 LC305:  sec
         .byte   OPC_BCC         ; never taken; skip next byte
 
         ;; Output
-        ;; C3COut1
+        .assert * = C3COut1, error, "Entry point mismatch"
 LC307:  clc
         clv
         bra     LC33A
@@ -124,37 +144,38 @@ LC307:  clc
 
         ;; AUXMOVE
         .assert * = AUXMOVE, error, "Entry point mismatch"
-        jmp     LC334
+        jmp     JumpAuxMove
 
         ;; XFER
         .assert * = XFER, error, "Entry point mismatch"
         php
-        bit     LCFFF
+        bit     CLRROM
         plp
-        jmp     LCC98
+        jmp     DoXfer
 
 ;;; ============================================================
 ;;; Pascal Entry Points
 
-JPINIT: bit     LCFFF
-        jmp     LCB44
+JPINIT: bit     CLRROM
+        jmp     PascalInit
 
-JPREAD: bit     LCFFF
-        jmp     LCB52
+JPREAD: bit     CLRROM
+        jmp     PascalRead
 
-JPWRITE:bit     LCFFF
-        jmp     LCB5D
+JPWRITE:bit     CLRROM
+        jmp     PascalWrite
 
-JPSTAT: bit     LCFFF
-        jmp     LCB81
+JPSTAT: bit     CLRROM
+        jmp     PascalStatus
 
-LC334:  bit     LCFFF
-        jmp     LCCC3
+JumpAuxMove:
+        bit     CLRROM
+        jmp     DoAuxMove
 
 ;;; ============================================================
 ;;; Main Entry Points
 
-LC33A:  sta     LCFFF
+LC33A:  sta     CLRROM
         sta     SAVEA
         stx     SAVEX
         sty     SAVEY
@@ -238,8 +259,8 @@ EscapeMode:
 
 ;;; ============================================================
 
-        ;; Unreached???
-        bit     LCFFF
+        ;; ???
+        bit     CLRROM
         jmp     LCEE7
 
 ;;; ============================================================
@@ -253,17 +274,17 @@ EscapeMode:
 
 ;;; ============================================================
 
-        ;; Unreached???
-        bit     LCFFF
+        ;; ???
+        bit     CLRROM
         jmp     LCE18
 
-        bit     LCFFF
+        bit     CLRROM
         jmp     LCDF7
 
-        bit     LCFFF
+        bit     CLRROM
         jmp     LCD09
 
-        bit     LCFFF
+        bit     CLRROM
         jmp     LCD35
 
 ;;; ==================================================
@@ -1031,19 +1052,28 @@ LCB36:  lda     #$00
         bit     TXTPAGE1
         jmp     LCA7A
 
-LCB44:  jsr     LC800
+;;; ============================================================
+
+PascalInit:
+        jsr     LC800
 LCB47:  jsr     LCBC7
 LCB4A:  ldx     CH
         stx     OURCH
         ldx     #$00
         rts
 
-LCB52:  jsr     LCB95
+;;; ============================================================
+
+PascalRead:
+        jsr     LCB95
         jsr     LC850
         lda     CHAR
         bra     LCB4A
 
-LCB5D:  sta     CHAR
+;;; ============================================================
+
+PascalWrite:
+        sta     CHAR
 LCB60:  jsr     LCB95
         jsr     LCBDE
         lda     CHAR
@@ -1060,7 +1090,10 @@ LCB60:  jsr     LCB95
 LCB7D:  stz     CH
         bra     LCB47
 
-LCB81:  cmp     #$00
+;;; ============================================================
+
+PascalStatus:
+        cmp     #$00
         beq     LCB8E
         cmp     #$01
         bne     LCB91
@@ -1073,6 +1106,8 @@ LCB8E:  sec
 LCB91:  ldx     #$03
         clc
         rts
+
+;;; ============================================================
 
 LCB95:  pha
         lda     OLDBASL
@@ -1090,6 +1125,7 @@ LCB95:  pha
         pla
         rts
 
+        ;; ???
         sta     CLRALTCHAR
 LCBB6:  sta     CLR80COL
         sta     CLR80VID
@@ -1201,27 +1237,34 @@ LCC73:  bit     TXTPAGE2
         sta     CLR80COL
         bra     LCC4A
 
-LCC98:  pha
-        lda     $03ED
+;;; ============================================================
+;;; XFER
+
+DoXfer:
         pha
-        lda     $03EE
+        lda     XFERVEC
+        pha
+        lda     XFERVEC+1
         pha
         sta     RDMAINRAM
         sta     WRMAINRAM
-        bcc     LCCAF
+        bcc     :+
         sta     RDCARDRAM
         sta     WRCARDRAM
-LCCAF:  pla
-        sta     $03EE
+:       pla
+        sta     XFERVEC+1
         pla
-        sta     $03ED
+        sta     XFERVEC
         pla
         sta     ALTZPOFF
-        bvc     LCCC0
+        bvc     :+
         sta     ALTZPON
-LCCC0:  jmp     ($03ED)
+:       jmp     (XFERVEC)
 
-LCCC3:  pha
+;;; ============================================================
+
+DoAuxMove:
+        pha
         bit     RDRAMRD
         php
         bit     RDRAMWRT
@@ -1384,12 +1427,9 @@ LCDE2:  jsr     LCE2E
         plx
         rts
 
-        ;; bad disasm
-        eor     ($55)
-        lsr     a:$0D
-        jmp     $5349
-        .byte   $54
-        ora     $FF00
+        ;; ???
+        .byte   $52, $55, $4e, $0d, $00
+        .byte   $4c, $49, $53, $54, $0d, $00, $ff
 
 ;;; ============================================================
 
@@ -1495,6 +1535,7 @@ ROMCall:
 
 ;;; ============================================================
 
+        ;; ???
         plp
         bpl     LCE9D
         plp
@@ -1549,6 +1590,9 @@ LCEDF:  bit     TXTPAGE1
 
 LCEE3:  bit     TXTPAGE2
         rts
+
+;;; ============================================================
+;;; AUXMOVE implementation
 
 LCEE7:  bit     RD80COL
         php
@@ -1635,19 +1679,18 @@ LCF83:  bcc     LCFB7
         sty     A4H
         sta     ALTZPOFF
         ldy     #$00
-LCF9B:  lda     (A1L),y
+:       lda     (A1L),y
         sta     ALTZPON
         sta     (A4L),y
         sta     ALTZPOFF
         iny
-        bne     LCF9B
+        bne     :-
         inc     A1H
-        .byte   $8D
-LCFAB:  ora     #$C0
+        sta     ALTZPON
         inc     A4H
         sta     ALTZPOFF
         dex
-        bne     LCF9B
+        bne     :-
         bra     LCFE4
 
 LCFB7:  sta     RDCARDRAM
@@ -1658,42 +1701,20 @@ LCFB7:  sta     RDCARDRAM
         sta     A1L
         sty     A1H
         ldy     #$00
-LCFCA:  sta     ALTZPON
+:       sta     ALTZPON
         lda     (A1L),y
         sta     ALTZPOFF
         sta     (A4L),y
         iny
-        bne     LCFCA
+        bne     :-
         inc     A4H
         sta     ALTZPON
-LCFDC:  .byte   $E6
-LCFDD:  and     $088D,x
-        cpy     #$CA
-        bne     LCFCA
+        inc     A1H
+        sta     ALTZPOFF
+        dex
+        bne     :-
 LCFE4:  jmp     LCF67
 
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-LCFFF:  brk
+;;; ============================================================
+
+        .res    $D000 - *, 0
