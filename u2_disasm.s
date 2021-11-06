@@ -1299,6 +1299,8 @@ LCD06:  pla
         sec
         rts
 
+;;; ============================================================
+
 LCD09:  bit     $0579
         bmi     LCD17
 LCD0E:  bit     KBD
@@ -1592,7 +1594,7 @@ LCEE3:  bit     TXTPAGE2
         rts
 
 ;;; ============================================================
-;;; AUXMOVE implementation
+;;; AUXMOVE implementation (?)
 
 LCEE7:  bit     RD80COL
         php
