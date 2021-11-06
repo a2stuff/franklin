@@ -5,13 +5,7 @@
 
 
         .setcpu "65C02"
-
-LF813           := $F813        ; Not an Apple II entry point
-LF981           := $F981        ; Not an Apple II entry point
-LFA37           := $FA37        ; Not an Apple II entry point
-LFA52           := $FA52        ; Not an Apple II entry point
-LFC45           := $FC45        ; Not an Apple II entry point
-LFEEB           := $FEEB        ; Not an Apple II entry point
+        .include "opcodes.inc"
 
 WNDLFT  := $20
 WNDWDTH := $21
@@ -19,11 +13,23 @@ WNDTOP  := $22
 WNDBTM  := $23
 CH      := $24
 CV      := $25
-
 BASL    := $28
 BASH    := $29
 BAS2L   := $2A
 BAS2H   := $2B
+INVFLG  := $32
+A1L     := $3C
+A1H     := $3D
+A2L     := $3E
+A2H     := $3F
+A4L     := $42
+A4H     := $43
+RNDL    := $4E
+RNDH    := $4F
+
+SAVEA   := $4F8
+SAVEX   := $578
+SAVEY   := $478
 
 OLDCH   := $47B
 MODE    := $4FB
@@ -81,11 +87,17 @@ XFER    := $C314
 
         .org    $C300
 
+        ;; Init
 LC300:  bit     SETV            ; V = init
         bra     LC33A
 
+        ;; Input
 LC305:  sec
-        bcc     $C320           ; never taken
+        .byte   OPC_BCC         ; never taken; skip next byte
+
+        ;; Output
+        ;; C3COut1
+LC307:  clc
         clv
         bra     LC33A
 
@@ -109,6 +121,9 @@ LC305:  sec
         plp
         jmp     LCC98
 
+;;; ============================================================
+;;; Pascal Entry Points
+
 JPINIT: bit     LCFFF
         jmp     LCB44
 
@@ -124,10 +139,13 @@ JPSTAT: bit     LCFFF
 LC334:  bit     LCFFF
         jmp     LCCC3
 
+;;; ============================================================
+;;; Main Entry Points
+
 LC33A:  sta     LCFFF
-        sta     $04F8
-        stx     $0578
-        sty     $0478
+        sta     SAVEA
+        stx     SAVEX
+        sty     SAVEY
         pha
         bvc     LC35B
 
@@ -154,7 +172,7 @@ LC36D:  plp
         jsr     LC8B1
         bra     LC3B7
 
-LC376:  ldx     $0578
+LC376:  ldx     SAVEX
         beq     LC38B
         dex
         lda     $0678
@@ -185,25 +203,26 @@ LC3AF:  jsr     LC850
         stz     $0678
 LC3B5:  bra     LC3BA
 
-LC3B7:  lda     $04F8
-LC3BA:  ldx     $0578
+LC3B7:  lda     SAVEA
+LC3BA:  ldx     SAVEX
         ldy     CH
         sty     OURCH
-        ldy     $0478
+        ldy     SAVEY
 SETV:   rts                     ; has V flag set
 
 LC3C6:  lda     #$80
-        tsb     MODE            ; set mode high bit
+        tsb     MODE            ; set high bit
         jsr     LC850
         jsr     LC933
         cmp     #$98            ; ctrl-x (clear)
         beq     LC3AA
-        lda     MODE            ; mode
+        lda     MODE
         bmi     LC3C6           ; test high bit
         bra     LC38B
 
         bit     LCFFF
         jmp     LCEE7
+
 
         brk
         brk
@@ -223,6 +242,17 @@ LC3C6:  lda     #$80
 
         bit     LCFFF
         jmp     LCD35
+
+;;; ==================================================
+
+        .assert * = $C400, error, "Mismatch"
+.scope
+LF813           := $F813        ; Not an Apple II entry point
+LF981           := $F981        ; Not an Apple II entry point
+LFA37           := $FA37        ; Not an Apple II entry point
+LFA52           := $FA52        ; Not an Apple II entry point
+LFC45           := $FC45        ; Not an Apple II entry point
+LFEEB           := $FEEB        ; Not an Apple II entry point
 
         ldx     #$00
         eor     #$20
@@ -285,13 +315,14 @@ LC469:  lda     ($00,x)
         tax
         lda     LC47E,x
         pha
-        lda     LC47F,x
+        lda     LC47E+1,x
         tax
         pla
         jmp     LF813
 
+        ;; Jump Table (target address-1)
 LC47E:  .byte   $F0
-LC47F:  sbc     $C100,x
+        sbc     $C100,x
         brk
         .byte   $C2
         brk
@@ -302,19 +333,20 @@ LC47F:  sbc     $C100,x
         dec     $00
         smb4    $1B
         sbc     a:$A9,x
-        stz     $3E
-        stz     $3F
+        stz     A2L
+        stz     A2H
         stz     $2C
-LC498:  ora     $3E
-        sta     $3E
+
+LC498:  ora     A2L
+        sta     A2L
         lda     $0200,y
         iny
         jsr     LFEEB
         bmi     LC4B2
         dec     $2C
         ldx     #$04
-LC4A9:  asl     $3E
-LC4AB:  rol     $3F
+LC4A9:  asl     A2L
+LC4AB:  rol     A2H
         dex
         bne     LC4A9
         bra     LC498
@@ -337,15 +369,15 @@ LC4B2:  jmp     LF813
         plx
 LC4CB:  jmp     LF813
 
+        ;; Data table
 LC4CE:  bbr0    $F0,LC4AB
         and     #$0F
         tax
-        lda     LC4DD,x
+        lda     $C4DD,x
         sta     $30
         plx
         jmp     LF813
-
-LC4DD:  brk
+        brk
         ora     ($22),y
         .byte   $33
         .byte   $44
@@ -355,15 +387,13 @@ LC4DD:  brk
         cpy     $EEDD
         .byte   $FF
         tya
-LC4EE:  ldy     $C4FD,x
+        ldy     $C4FD,x
         beq     * + (8)
         cmp     $C000,y
         inx
-        bra     LC4EE
-
+        bra     $C4EE
         tay
         jmp     LF813
-
         eor     ($54)
         lsr     $00,x
         lsr     $50,x
@@ -411,6 +441,7 @@ LC4EE:  ldy     $C4FD,x
         smb7    $03
         bcc     $C574
         sbc     a:$00,x
+.endscope
 
 ;;; ============================================================
 
@@ -419,7 +450,7 @@ LC4EE:  ldy     $C4FD,x
 ;;; ============================================================
 
 LC800:  lda     #$30            ; set to normal state (%00110000)
-        sta     MODE            ; mode
+        sta     MODE
         jsr     LCBBD
         jsr     LCE3C
         jmp     DoHomeAndClear
@@ -436,9 +467,9 @@ LC812:  cpy     WNDWDTH
 
 LC820:  dey
         sty     CH
-        stx     $0578
+        stx     SAVEX
         lda     #$8D
-LC828:  rts
+rts1:   rts
 
 Do40Col:
         bit     RD80VID
@@ -447,7 +478,7 @@ Do40Col:
         jsr     LCADA
         jsr     LCE3C
         plp
-        bpl     LC828
+        bpl     rts1
         jmp     LCC4E
 
         nop
@@ -467,12 +498,14 @@ Do40Col:
         nop
         nop
         nop
+
         jsr     LCB95
 LC850:  jsr     LCBC7
-LC853:  inc     $4E
-        bne     LC859
-        inc     $4F
-LC859:  jsr     LCD09
+LC853:  inc     RNDL
+        bne     :+
+        inc     RNDH
+:
+        jsr     LCD09
         bcc     LC853
         jsr     LCD35
         cmp     #$06
@@ -486,7 +519,7 @@ LC86E:  sta     CHAR
 LC871:  pha
         jsr     LCBDE
         pla
-LC876:  rts
+rts2:   rts
 
 LC877:  jsr     LC850
         cmp     #$00
@@ -494,7 +527,7 @@ LC877:  jsr     LC850
         cmp     #$02
         beq     LC80E
         cmp     #$05
-        bne     LC876
+        bne     rts2
         ldy     CH
 LC888:  iny
         cpy     WNDWDTH
@@ -523,7 +556,7 @@ LC8A2:  cpy     CH
 
 LC8B1:  sta     CHAR
 LC8B4:  jsr     LC992
-        lda     MODE            ; mode
+        lda     MODE
         and     #$03            ; test low 3 bits
         beq     LC8C1
         jmp     LCA11
@@ -537,10 +570,10 @@ LC8C1:  lda     CHAR
         bcc     LC8D3
         jsr     DoReturn
 LC8D3:  lda     CHAR            ; char to be printed
-        bit     $32
+        bit     INVFLG
         bmi     LC8F0
         and     #$7F
-        bit     MODE            ; mode
+        bit     MODE
         bvs     LC8F0           ; test bit 6 (MouseText active)
         bit     ALTCHARSET
         bpl     LC8F0
@@ -563,24 +596,23 @@ LC8F7:  sec
         bcc     DoNothing
         asl     a
         tax
-        jmp     (LC901,x)
+        jmp     (jt1,x)
 
-        ;; Jump Table
-LC901:
+jt1:
         .addr   DoBell          ; $07 Ctrl-G Bell
-        .addr   DoBackspace     ; $08; Ctrl-H Backspace
-        .addr   DoNothing       ; $09 Ctrl-I ???
+        .addr   DoBackspace     ; $08 Ctrl-H Backspace
+        .addr   DoNothing       ; $09 Ctrl-I
         .addr   DoLineFeed      ; $0A Ctrl-J Line feed
         .addr   DoClearEOS      ; $0B Ctrl-K Clear EOS
         .addr   DoHomeAndClear  ; $0C Ctrl-L Home and clear
         .addr   DoReturn        ; $0D Ctrl-M Return
         .addr   DoNormal        ; $0E Ctrl-N Normal
         .addr   DoInverse       ; $0F Ctrl-O Inverse
-        .addr   DoNothing       ; $10 Ctrl-P ???
+        .addr   DoNothing       ; $10 Ctrl-P
         .addr   Do40Col         ; $11 Ctrl-Q 40-column
         .addr   Do80Col         ; $12 Ctrl-R 80-column
-        .addr   DoNothing       ; $13 Ctrl-S Stop list
-        .addr   DoNothing       ; $14 Ctrl-T ???
+        .addr   DoNothing       ; $13 Ctrl-S
+        .addr   DoNothing       ; $14 Ctrl-T
         .addr   DoQuit          ; $15 Ctrl-U Quit
         .addr   DoScroll        ; $16 Ctrl-V Scroll
         .addr   DoScrollUp      ; $17 Ctrl-W Scroll-up
@@ -597,7 +629,7 @@ LC901:
 
 LC933:  pha
         lda     #$80
-        trb     MODE            ; clear mode high bit
+        trb     MODE            ; clear high bit
         pla
         and     #$7F
         cmp     #'a'
@@ -608,9 +640,9 @@ LC933:  pha
 
         ;; Scan table for match
 LC946:  ldx     #$00
-LC948:  ldy     LC95B,x
+LC948:  ldy     code_table,x
         beq     DoNothing
-        cmp     LC95B,x
+        cmp     code_table,x
         beq     LC955
         inx
         bra     LC948
@@ -618,11 +650,11 @@ LC948:  ldy     LC95B,x
 LC955:  txa
         asl     a
         tax
-        jmp     (LC96E,x)
+        jmp     (jt2,x)
 
 
         ;; Character match table
-LC95B:
+code_table:
         .byte   '@'
         .byte   'A'
         .byte   'B'
@@ -646,7 +678,8 @@ LC95B:
 
 
         ;; Jump table
-LC96E:  .addr   DoHomeAndClear  ; '@'
+jt2:
+        .addr   DoHomeAndClear  ; '@'
         .addr   DoForwardSpace  ; 'A'
         .addr   DoBackspace     ; 'B'
         .addr   DoLineFeed      ; 'C'
@@ -669,14 +702,14 @@ LC96E:  .addr   DoHomeAndClear  ; '@'
 
 LC992:  lda     KBD
         cmp     #$93            ; Ctrl-S
-        bne     LC9A8
+        bne     rts3
         bit     KBDSTRB
-LC99C:  lda     KBD
-        bpl     LC99C
+:       lda     KBD
+        bpl     :-
         cmp     #$83            ; Ctrl-C
-        beq     LC9A8
+        beq     rts3
         bit     KBDSTRB
-LC9A8:  rts
+rts3:   rts
 
         nop
         jmp     LCB60
@@ -700,8 +733,8 @@ DoInverse:
 
 DoNormal:
         ldy     #$FF
-LC9CA:  sty     $32
-LC9CC:  rts
+LC9CA:  sty     INVFLG
+rts4:   rts
 
 Do80Col:
         bit     RD80VID
@@ -710,7 +743,7 @@ Do80Col:
         jsr     LCADA
         jsr     LCE3C
         plp
-        bmi     LC9CC
+        bmi     rts4
         jmp     LCBFE
 
 DoQuit:
@@ -746,9 +779,9 @@ LCA11:  lda     CHAR            ; character to read/print
         sbc     #$20
         and     #$7F
         pha
-        dec     MODE            ; mode ... clear low bit?
+        dec     MODE            ; clear low bit???
         lda     MODE
-        and     #$03            ; mode test low 2 bits
+        and     #$03            ; test low 2 bits
         bne     LCA36
         pla
         cmp     #$18            ; +$20 is $38 = '8' ???
@@ -1004,7 +1037,7 @@ LCBC7:  lda     MODE            ; all mode bits set?
         eor     #$AB
         bra     LCBF9
 
-LCBDE:  lda     MODE            ; test mode high bit
+LCBDE:  lda     MODE            ; test high bit
         and     #$80
         beq     LCBEA
         lda     OLDCH
@@ -1124,18 +1157,18 @@ LCCC3:  pha
         bcc     LCCDA
         sta     RDMAINRAM
         sta     WRCARDRAM
-LCCDA:  lda     ($3C)
-        sta     ($42)
-        inc     $42
+LCCDA:  lda     (A1L)
+        sta     (A4L)
+        inc     A4L
         bne     LCCE4
-        inc     $43
-LCCE4:  lda     $3C
-        cmp     $3E
-        lda     $3D
-        sbc     $3F
-        inc     $3C
+        inc     A4H
+LCCE4:  lda     A1L
+        cmp     A2L
+        lda     A1H
+        sbc     A2H
+        inc     A1L
         bne     LCCF2
-        inc     $3D
+        inc     A1H
 LCCF2:  bcc     LCCDA
         sta     WRCARDRAM
         plp
@@ -1437,51 +1470,51 @@ LCEE7:  bit     RD80COL
 LCEFD:  bcc     LCF35
         sta     RDMAINRAM
         sta     WRCARDRAM
-        lda     $42
-        ldx     $43
+        lda     A4L
+        ldx     A4H
         sta     ALTZPON
-        sta     $42
-        stx     $43
+        sta     A4L
+        stx     A4H
         sta     ALTZPOFF
-LCF13:  lda     ($3C)
+LCF13:  lda     (A1L)
         sta     ALTZPON
-        sta     ($42)
-        inc     $42
+        sta     (A4L)
+        inc     A4L
         bne     LCF20
-        inc     $43
+        inc     A4H
 LCF20:  sta     ALTZPOFF
-        lda     $3C
-        cmp     $3E
-        lda     $3D
-        sbc     $3F
-        inc     $3C
+        lda     A1L
+        cmp     A2L
+        lda     A1H
+        sbc     A2H
+        inc     A1L
         bne     LCF31
-        inc     $3D
+        inc     A1H
 LCF31:  bcc     LCF13
         bra     LCF67
 
 LCF35:  sta     RDCARDRAM
         sta     WRMAINRAM
-        lda     $3C
-        ldx     $3D
+        lda     A1L
+        ldx     A1H
         sta     ALTZPON
-        sta     $3C
-        stx     $3D
+        sta     A1L
+        stx     A1H
 LCF46:  sta     ALTZPON
-        lda     ($3C)
-        ldx     $3C
-        ldy     $3D
-        inc     $3C
+        lda     (A1L)
+        ldx     A1L
+        ldy     A1H
+        inc     A1L
         bne     LCF55
-        inc     $3D
+        inc     A1H
 LCF55:  sta     ALTZPOFF
-        sta     ($42)
-        inc     $42
+        sta     (A4L)
+        inc     A4L
         bne     LCF60
-        inc     $43
-LCF60:  cpx     $3E
+        inc     A4H
+LCF60:  cpx     A2L
         tya
-        sbc     $3F
+        sbc     A2H
         bcc     LCF46
 LCF67:  sta     ALTZPOFF
         sta     WRCARDRAM
@@ -1500,23 +1533,23 @@ LCF82:  rts
 LCF83:  bcc     LCFB7
         sta     RDMAINRAM
         sta     WRCARDRAM
-        lda     $42
-        ldy     $43
+        lda     A4L
+        ldy     A4H
         sta     ALTZPON
-        sta     $42
-        sty     $43
+        sta     A4L
+        sty     A4H
         sta     ALTZPOFF
         ldy     #$00
-LCF9B:  lda     ($3C),y
+LCF9B:  lda     (A1L),y
         sta     ALTZPON
-        sta     ($42),y
+        sta     (A4L),y
         sta     ALTZPOFF
         iny
         bne     LCF9B
-        inc     $3D
+        inc     A1H
         .byte   $8D
 LCFAB:  ora     #$C0
-        inc     $43
+        inc     A4H
         sta     ALTZPOFF
         dex
         bne     LCF9B
@@ -1524,19 +1557,19 @@ LCFAB:  ora     #$C0
 
 LCFB7:  sta     RDCARDRAM
         sta     WRMAINRAM
-        lda     $3C
-        ldy     $3D
+        lda     A1L
+        ldy     A1H
         sta     ALTZPON
-        sta     $3C
-        sty     $3D
+        sta     A1L
+        sty     A1H
         ldy     #$00
 LCFCA:  sta     ALTZPON
-        lda     ($3C),y
+        lda     (A1L),y
         sta     ALTZPOFF
-        sta     ($42),y
+        sta     (A4L),y
         iny
         bne     LCFCA
-        inc     $43
+        inc     A4H
         sta     ALTZPON
 LCFDC:  .byte   $E6
 LCFDD:  and     $088D,x
@@ -1548,7 +1581,7 @@ LCFE4:  jmp     LCF67
         brk
         brk
         brk
-LCFEB:  brk
+        brk
         brk
         brk
         brk
