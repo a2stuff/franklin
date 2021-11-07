@@ -3,42 +3,124 @@
 ; Input file: c300_cfff
 ; Page:       1
 
-        .org $C300
         .setcpu "65C02"
+        .include "opcodes.inc"
+
+;;; Zero Page
+
+WNDLFT  := $20
+WNDWDTH := $21
+WNDTOP  := $22
+WNDBTM  := $23
+CH      := $24
+CV      := $25
+BASL    := $28
+BASH    := $29
+BAS2L   := $2A
+BAS2H   := $2B
+INVFLG  := $32
+A1L     := $3C
+A1H     := $3D
+A2L     := $3E
+A2H     := $3F
+A4L     := $42
+A4H     := $43
+RNDL    := $4E
+RNDH    := $4F
+
+;;; Page 3 Vectors
+
+XFERVEC := $3ED
+
+;;; Screen Holes
+
+SAVEA   := $4F8
+SAVEX   := $578
+SAVEY   := $478
+
+OLDCH   := $47B
+MODE    := $4FB
+        ;; Bit 7 = Escape Mode
+        ;; Bit 6 = MouseText active
+        ;; Bit 5 = ??? set when "normal"
+        ;; Bit 4 = ??? set when "normal"
+        ;; Bit 3 = ??? unused ???
+        ;; Bit 2 = ??? unused ???
+        ;; Bit 1 = ??? used for ???
+        ;; Bit 0 = ??? used for ???
+M_ESC   = %10000000
+M_MOUSE = %01000000
+M_NORMAL= %00110000
+
+OURCH   := $57B
+OURCV   := $5FB
+CHAR    := $67B                 ; Unused
+XCOORD  := $6FB
+TEMP1   := $77B                 ; Unused
+OLDBASL := $77B
+TEMP2   := $7FB
+OLDBASH := $7FB
+
+;;; I/O Soft Switches
+
+KBD     := $C000
+CLR80COL:= $C000
+SET80COL:= $C001
+RDMAINRAM := $C002
+RDCARDRAM := $C003
+WRMAINRAM := $C004
+WRCARDRAM := $C005
+ALTZPOFF:= $C008
+ALTZPON := $C009
+CLR80VID:= $C00C
+SET80VID:= $C00D
+CLRALTCHAR := $C00E
+SETALTCHAR := $C00F
+KBDSTRB := $C010
+RDLCBNK2:= $C011
+RDLCRAM := $C012
+RDRAMRD := $C013
+RDRAMWRT:= $C014
+RD80COL := $C018
+RDTEXT  := $C01A
+ALTCHARSET := $C01E
+RD80VID := $C01F
+TXTPAGE1:= $C054
+TXTPAGE2:= $C055
+ROMIN   := $C081
+ROMIN2  := $C082
+LCBANK2 := $C083
+LCBANK1 := $C08B
+
+;;; Documented Firmware Entry Points
+
+C3KeyIn := $C305
+C3COut1 := $C307
+AUXMOVE := $C311
+XFER    := $C314
+
+CLRROM  := $CFFF
+
+;;; Monitor ROM
+
+BELLB   := $FBE2
+SETWND  := $FB4B
+SETKBD  := $FE89
+SETVID  := $FE93
+MON_VTAB:= $FC22
+CLREOP  := $FC42
+HOME    := $FC58
+CLREOL  := $FC9C
+
+;;; ============================================================
 
 L03F0           := $03F0
 L03FE           := $03FE
-L0801           := $0801
-L2020           := $2020
-L3F20           := $3F20
-L4144           := $4144
-L4148           := $4148
-L4445           := $4445
-L4843           := $4843
-L4854           := $4854
-L494D           := $494D
-L4E41           := $4E41
-L4E45           := $4E45
-L4F43           := $4F43
-L4F46           := $4F46
-L4F4D           := $4F4D
-L4F54           := $4F54
-L5349           := $5349
-L5355           := $5355
-L5428           := $5428
-L5709           := $5709
-LC1F2           := $C1F2
-LC1F7           := $C1F7
-LC1FA           := $C1FA
-LC1FD           := $C1FD
-LC220           := $C220
-LD00C           := $D00C
-LFC24           := $FC24
-LFC58           := $FC58
-LFC9E           := $FC9E
-LFDED           := $FDED
-LFDF0           := $FDF0
-LFF4A           := $FF4A
+
+;;; ============================================================
+
+        .org $C300
+
 LC300:  bit     LC3D4
         bra     LC341
         sec
@@ -52,12 +134,12 @@ LC300:  bit     LC3D4
         .byte   $33
         jmp     LC33B
 
-        jsr     LC5FA
+        jsr     extra_LC5FA
         jmp     LCC03
 
         jsr     LC3C4
         jsr     LCB5D
-LC320:  jmp     LC5FA
+LC320:  jmp     extra_LC5FA
 
         jsr     LC3C4
         jsr     LCB6E
@@ -68,7 +150,7 @@ LC320:  jmp     LC5FA
         jsr     LC3C4
         jsr     LCB9D
         bra     LC320
-LC33B:  jsr     LC5FA
+LC33B:  jsr     extra_LC5FA
         jmp     LCC06
 
 LC341:  jsr     LC3C4
@@ -103,7 +185,7 @@ LC371:  jsr     LC96F
         pla
 LC381:  cmp     #$95
         bne     LC38A
-        ldy     $24
+        ldy     CH
         jsr     LC9A8
 LC38A:  sta     $0678
         bra     LC395
@@ -113,11 +195,11 @@ LC395:  bra     LC39D
 LC397:  jsr     LC849
         lda     $04F8
 LC39D:  ldx     $0578
-        ldy     $24
+        ldy     CH
         sty     $057B
         sty     $06FB
         ldy     $0478
-        jmp     LC5FA
+        jmp     extra_LC5FA
 
 LC3AE:  lda     #$80
         tsb     $04FB
@@ -131,7 +213,7 @@ LC3AE:  lda     #$80
 LC3C4:  php
         sei
         pha
-        sta     $C0BA
+        sta     $C0BA           ; ???
         sta     LCFFF
         lda     #$C3
         sta     $07F8
@@ -146,7 +228,7 @@ LC3D4:  rts
         brk
         brk
         brk
-        jsr     LC5FA
+        jsr     extra_LC5FA
         jmp     LCC00
 
 LC3E2:  plx
@@ -165,6 +247,18 @@ LC3F4:  jsr     LC3C4
 
 LC3FA:  jsr     LC3C4
         jmp     LCCF5
+
+;;; ============================================================
+
+.scope extra
+
+LFC24           := $FC24
+LFC58           := $FC58
+LFC9E           := $FC9E
+LFDED           := $FDED
+LFDF0           := $FDF0
+LFF4A           := $FF4A
+
 
         bit     LC42E
         bra     LC41C
@@ -218,7 +312,7 @@ LC459:  jsr     LC5FA
 
         ldx     $C066
         ldy     $C067
-        jmp     LC220
+        jmp     $C220
 
 LC468:  jsr     LC5FA
         jmp     LC9A0
@@ -286,12 +380,12 @@ LC4A0:  cld
 
         pla
         bpl     LC4BE
-        sta     $C009
+        sta     ALTZPON
         ldx     $0101
         txs
 LC4BE:  ldx     $07FF
         pla
-        jsr     LC1FA
+        jsr     $C1FA
         pla
         bmi     LC4CB
         sta     $C0B8
@@ -309,7 +403,7 @@ LC4CB:  sta     $C0BA
         sta     $C0BB
         rti
 
-LC4E4:  jmp     LC1F2
+LC4E4:  jmp     $C1F2
 
 LC4E7:  jmp     LC3E2
 
@@ -474,7 +568,7 @@ LC5FA:  jmp     LC5A8
         bit     $20
         cpy     $00
         ldx     #$03
-        asl     $3C
+        asl     A1L
         jsr     LC5FA
         ldy     #$69
 LC60D:  lda     LCF26,y
@@ -482,13 +576,13 @@ LC60D:  lda     LCF26,y
         dey
         bpl     LC60D
         ldx     #$60
-LC618:  inc     $2B
-        cpx     $2B
+LC618:  inc     BAS2H
+        cpx     BAS2H
         bne     LC618
         jsr     LCEA6
 LC621:  dec     $41
         bne     LC621
-LC625:  dec     $3D
+LC625:  dec     A1H
         bne     LC625
 LC629:  dec     $26
         bne     LC629
@@ -604,7 +698,7 @@ LC684:  jsr     LC5FA
         brk
         brk
         ldy     #$56
-        sty     $3C
+        sty     A1L
         sec
         clv
         jmp     LCE51
@@ -669,21 +763,21 @@ LC684:  jsr     LC5FA
         nop
         nop
 LC6EA:  nop
-        lda     $3D
+        lda     A1H
         inc     a
-        sta     $3D
+        sta     A1H
         inc     $27
         cmp     $0800
         bcc     LC684
         ldy     #$00
-        ldx     $2B
-        jmp     L0801
+        ldx     BAS2H
+        jmp     $0801
 
         .byte   $DE
         brk
-LC700:  jsr     LC1F7
+LC700:  jsr     $C1F7
         pha
-        jsr     LC1FD
+        jsr     $C1FD
         lda     $07F8
         sta     $07FF
         phx
@@ -696,7 +790,7 @@ LC700:  jsr     LC1F7
         plx
         and     #$10
         bne     LC747
-        jsr     LC220
+        jsr     $C220
         bcc     LC744
         jsr     LC784
         bcc     LC744
@@ -709,7 +803,7 @@ LC700:  jsr     LC1F7
         ldx     $0100
         txs
         tax
-        sta     $C008
+        sta     ALTZPOFF
         lda     #$80
 LC739:  pha
         lda     #$C4
@@ -742,13 +836,13 @@ LC751:  pla
         stx     $0101
         ldx     $0100
         txs
-        sta     $C008
+        sta     ALTZPOFF
         sta     $3A
         sty     $3B
         ldx     #$05
-LC774:  sta     $C009
+LC774:  sta     ALTZPON
         lda     $44,x
-        sta     $C008
+        sta     ALTZPOFF
         sta     $44,x
         dex
         bpl     LC774
@@ -787,11 +881,11 @@ LC7BF:  tsb     $50
         plx
         ora     $70
         ora     $1A10,x
-        lda     $C000
+        lda     KBD
         bit     $C0B4
         bmi     LC7D3
         and     #$7F
-LC7D3:  bit     $C010
+LC7D3:  bit     KBDSTRB
         ldx     $05FF
         jsr     LC7E5
         bne     LC7E0
@@ -800,9 +894,9 @@ LC7E0:  stx     $05FF
 LC7E3:  clc
 LC7E4:  rts
 
-LC7E5:  sta     $C005
+LC7E5:  sta     WRCARDRAM
         sta     $0800,x
-        sta     $C004
+        sta     WRMAINRAM
         inx
         rts
 
@@ -820,10 +914,18 @@ LC7E5:  sta     $C005
         brk
         brk
 LC7FD:  jmp     LC792
+.endscope
+extra_LC5FA := extra::LC5FA
 
-        .byte   $C3
+;;; ============================================================
+
+        .res $C800 - *, 0
+
+;;; ============================================================
+
+LC800:  .byte   $C3
         eor     $AA,x
-        jmp     LC4A0
+        jmp     $C4A0           ; bad disasm?
 
 LC806:  lda     #$05
         sta     $38
@@ -839,9 +941,9 @@ LC814:  lda     #$30
         jmp     LCE60
 
 LC822:  jsr     LCBE1
-LC825:  inc     $4E
+LC825:  inc     RNDL
         bne     LC82B
-        inc     $4F
+        inc     RNDH
 LC82B:  jsr     LCCB8
         bcc     LC825
         jsr     LCCFB
@@ -850,7 +952,7 @@ LC82B:  jsr     LCCB8
         .byte   $29
 LC838:  bbr7    $8D,LC8B6
 LC83B:  asl     $09
-        bra     LC7BF
+        bra     $C7BF           ; bad disasm?
         .byte   $03
 LC840:  sta     $067B
         pha
@@ -869,17 +971,17 @@ LC859:  lda     $067B
         and     #$7F
         cmp     #$20
         bcc     LC88F
-        ldy     $24
-        cpy     $21
+        ldy     CH
+        cpy     WNDWDTH
         bcc     LC86B
         jsr     LCA79
 LC86B:  lda     $067B
-        bit     $32
+        bit     INVFLG
         bmi     LC888
         and     #$7F
         bit     $04FB
         bvs     LC888
-        bit     $C01E
+        bit     ALTCHARSET
         bpl     LC888
         cmp     #$40
         bcc     LC888
@@ -981,11 +1083,11 @@ LC922:  smb5    $C9
         cmp     #$EB
         cmp     #$FE
         .byte   $C9
-LC92A:  lda     $C000
+LC92A:  lda     KBD
         cmp     #$93
         bne     LC940
-        bit     $C010
-LC934:  lda     $C000
+        bit     KBDSTRB
+LC934:  lda     KBD
         bpl     LC934
         cmp     #$83
         beq     LC940
@@ -995,7 +1097,7 @@ LC940:  rts
 
 LC941:  ldy     #$00
         ldx     #$00
-LC945:  cpy     $21
+LC945:  cpy     WNDWDTH
         bcs     LC953
         jsr     LC9A8
         sta     $0200,x
@@ -1003,14 +1105,14 @@ LC945:  cpy     $21
         iny
         bra     LC945
 LC953:  dey
-        sty     $24
+        sty     CH
         .byte   $8E
         sei
 LC958:  ora     $A9
         .byte   $8D
 LC95B:  rts
 
-LC95C:  bit     $C01F
+LC95C:  bit     RD80VID
         php
         jsr     LCBD0
         jsr     LCAFA
@@ -1028,9 +1130,9 @@ LC96F:  jsr     LC822
         beq     LC941
         cmp     #$05
         bne     LC95B
-        ldy     $24
+        ldy     CH
 LC980:  iny
-        cpy     $21
+        cpy     WNDWDTH
         beq     LC98F
         jsr     LC9A8
         dey
@@ -1041,9 +1143,9 @@ LC98F:  dey
 LC990:  lda     #$A0
         jsr     LCEC8
         bra     LC96F
-LC997:  ldy     $21
+LC997:  ldy     WNDWDTH
         dey
-        cpy     $24
+        cpy     CH
         beq     LC990
         dey
         .byte   $20
@@ -1059,16 +1161,16 @@ LC9A8:  jsr     LCEBD
         ora     #$40
 LC9B3:  rts
 
-LC9B4:  bit     $C01F
+LC9B4:  bit     RD80VID
         bpl     LC9CC
-        lsr     $21
-        asl     $21
-        sta     $C001
-LC9C0:  lda     $24
+        lsr     WNDWDTH
+        asl     WNDWDTH
+        sta     SET80COL
+LC9C0:  lda     CH
         cmp     $06FB
         bne     LC9CA
         lda     $057B
-LC9CA:  sta     $24
+LC9CA:  sta     CH
 LC9CC:  rts
 
 LC9CD:  jsr     LCA69
@@ -1082,10 +1184,10 @@ LC9DF:  lda     #$80
         bra     LCA28
         ldy     #$3F
         bit     $FFA0
-        sty     $32
+        sty     INVFLG
 LC9EA:  rts
 
-        bit     $C01F
+        bit     RD80VID
         php
         jsr     LCBD7
         jsr     LCAFA
@@ -1131,151 +1233,151 @@ LCA2F:  lda     $067B
         bcs     LCA4A
         jsr     LCAA3
 LCA4A:  lda     $05F8
-        cmp     $21
+        cmp     WNDWDTH
         bcs     LCA53
-        sta     $24
+        sta     CH
 LCA53:  rts
 
 LCA54:  pla
         sta     $05F8
         rts
 
-LCA59:  lda     $24
+LCA59:  lda     CH
         beq     LCA60
-        dec     $24
+        dec     CH
 LCA5F:  rts
 
-LCA60:  lda     $25
+LCA60:  lda     CV
         beq     LCA5F
-        lda     $21
+        lda     WNDWDTH
         dec     a
-        sta     $24
-LCA69:  lda     $25
+        sta     CH
+LCA69:  lda     CV
         beq     LCA5F
-        dec     $25
+        dec     CV
         bra     LCAA5
-LCA71:  inc     $24
-        lda     $24
-        cmp     $21
+LCA71:  inc     CH
+        lda     CH
+        cmp     WNDWDTH
         bcc     LCA5F
-LCA79:  stz     $24
-LCA7B:  lda     $25
+LCA79:  stz     CH
+LCA7B:  lda     CV
         cmp     #$FF
         beq     LCA85
         cmp     #$17
         bcs     LCAA8
-LCA85:  inc     $25
+LCA85:  inc     CV
         bra     LCAA5
-LCA89:  lda     $22
+LCA89:  lda     WNDTOP
         ldx     #$00
         bra     LCAA1
-LCA8F:  lda     $24
+LCA8F:  lda     CH
         pha
-        stz     $24
+        stz     CH
         jsr     LCE66
         pla
-        sta     $24
+        sta     CH
         rts
 
 LCA9B:  lda     $06F8
         ldx     $0778
-LCAA1:  stx     $24
-LCAA3:  sta     $25
+LCAA1:  stx     CH
+LCAA3:  sta     CV
 LCAA5:  jmp     LCE54
 
-LCAA8:  lda     $24
+LCAA8:  lda     CH
         pha
         jsr     LCA89
-LCAAE:  ldy     $29
-        sty     $2B
-        ldy     $28
-        sty     $2A
-        lda     $23
+LCAAE:  ldy     BASH
+        sty     BAS2H
+        ldy     BASL
+        sty     BAS2L
+        lda     WNDBTM
         beq     LCAF0
         dec     a
-        cmp     $25
+        cmp     CV
         beq     LCAF0
         bcc     LCAF0
-        inc     $25
+        inc     CV
         jsr     LCAA5
-        ldy     $21
+        ldy     WNDWDTH
         dey
-        bit     $C01F
+        bit     RD80VID
         bmi     LCAD7
-LCACE:  lda     ($28),y
-        sta     ($2A),y
+LCACE:  lda     (BASL),y
+        sta     (BAS2L),y
         dey
         bpl     LCACE
         bra     LCAAE
 LCAD7:  tya
         lsr     a
         tay
-LCADA:  bit     $C054
-        lda     ($28),y
-        sta     ($2A),y
-        bit     $C055
-        lda     ($28),y
-        sta     ($2A),y
+LCADA:  bit     TXTPAGE1
+        lda     (BASL),y
+        sta     (BAS2L),y
+        bit     TXTPAGE2
+        lda     (BASL),y
+        sta     (BAS2L),y
         dey
         bpl     LCADA
-        bit     $C054
+        bit     TXTPAGE1
         bra     LCAAE
-LCAF0:  stz     $24
+LCAF0:  stz     CH
         jsr     LCE66
         plx
-        lda     $25
+        lda     CV
         bra     LCAA1
-LCAFA:  lda     $25
+LCAFA:  lda     CV
         sta     $06F8
-        lda     $24
+        lda     CH
         sta     $0778
         rts
 
         jsr     LCAFA
-        lda     $23
+        lda     WNDBTM
         dec     a
         dec     a
         sta     $05F8
 LCB0F:  lda     $05F8
         jsr     LCAA3
-        lda     $28
-        sta     $2A
-        lda     $29
-        sta     $2B
+        lda     BASL
+        sta     BAS2L
+        lda     BASH
+        sta     BAS2H
         lda     $05F8
         inc     a
         jsr     LCAA3
-        ldy     $21
+        ldy     WNDWDTH
         dey
 LCB27:  phy
-        bit     $C054
-        bit     $C01F
+        bit     TXTPAGE1
+        bit     RD80VID
         bpl     LCB38
         tya
         lsr     a
         tay
         bcs     LCB38
-        bit     $C055
-LCB38:  lda     ($2A),y
-        sta     ($28),y
+        bit     TXTPAGE2
+LCB38:  lda     (BAS2L),y
+        sta     (BASL),y
         ply
         dey
         bpl     LCB27
-        bit     $C054
+        bit     TXTPAGE1
         lda     $05F8
-        cmp     $22
+        cmp     WNDTOP
         beq     LCB4F
         dec     $05F8
         bra     LCB0F
 LCB4F:  lda     #$00
         jsr     LCAA3
         jsr     LCA8F
-        bit     $C054
+        bit     TXTPAGE1
         jmp     LCA9B
 
 LCB5D:  jsr     LC814
 LCB60:  jsr     LCBE1
-LCB63:  ldx     $24
+LCB63:  ldx     CH
         stx     $057B
         stx     $06FB
         ldx     #$00
@@ -1298,7 +1400,7 @@ LCB79:  sta     $067B
         beq     LCB99
         jsr     LC84C
         bra     LCB60
-LCB99:  stz     $24
+LCB99:  stz     CH
         bra     LCB60
 LCB9D:  cmp     #$00
         beq     LCBAA
@@ -1314,27 +1416,27 @@ LCBAD:  ldx     #$03
 
 LCBB1:  pha
         lda     $077B
-        sta     $28
+        sta     BASL
         lda     $07FB
-        sta     $29
-        stz     $22
-        stz     $20
+        sta     BASH
+        stz     WNDTOP
+        stz     WNDLFT
         lda     #$50
-        sta     $21
+        sta     WNDWDTH
         lda     #$18
-        sta     $23
+        sta     WNDBTM
         jsr     LC9C0
         pla
         rts
 
-        sta     $C00E
-LCBD0:  sta     $C000
-        sta     $C00C
+        sta     CLRALTCHAR
+LCBD0:  sta     CLR80COL
+        sta     CLR80VID
         rts
 
-LCBD7:  sta     $C001
-        sta     $C00D
-        sta     $C00F
+LCBD7:  sta     SET80COL
+        sta     SET80VID
+        sta     SETALTCHAR
         rts
 
 LCBE1:  lda     $04FB
@@ -1362,37 +1464,37 @@ LCC06:  dec     $8049
         cmp     #$60
         bcs     LCC13
         and     #$1F
-LCC13:  ldy     $24
+LCC13:  ldy     CH
         jmp     LCEC8
 
 LCC18:  php
         sei
-        lda     $22
+        lda     WNDTOP
         sta     $05F8
 LCC1F:  lda     $05F8
         jsr     LCAA3
-        lda     $28
-        sta     $2A
-        lda     $29
-        sta     $2B
+        lda     BASL
+        sta     BAS2L
+        lda     BASH
+        sta     BAS2H
         ldy     #$00
-LCC2F:  bit     $C054
-        lda     ($2A)
-        bit     $C055
-        sta     ($28),y
-        bit     $C054
-        inc     $2A
-        lda     ($2A)
-        sta     ($28),y
+LCC2F:  bit     TXTPAGE1
+        lda     (BAS2L)
+        bit     TXTPAGE2
+        sta     (BASL),y
+        bit     TXTPAGE1
+        inc     BAS2L
+        lda     (BAS2L)
+        sta     (BASL),y
         iny
-        inc     $2A
+        inc     BAS2L
         cpy     #$14
         bcc     LCC2F
         lda     #$A0
-LCC4B:  bit     $C055
-        sta     ($28),y
-        bit     $C054
-        sta     ($28),y
+LCC4B:  bit     TXTPAGE2
+        sta     (BASL),y
+        bit     TXTPAGE1
+        sta     (BASL),y
         iny
         cpy     #$28
         bcc     LCC4B
@@ -1405,30 +1507,30 @@ LCC64:  plp
 
 LCC68:  php
         sei
-        sta     $C001
-        lda     $22
+        sta     SET80COL
+        lda     WNDTOP
         sta     $05F8
 LCC72:  lda     $05F8
         jsr     LCAA3
         ldy     #$13
-        bit     $C054
-LCC7D:  lda     ($28),y
+        bit     TXTPAGE1
+LCC7D:  lda     (BASL),y
         pha
         dey
         bpl     LCC7D
         ldy     #$00
-        lda     $28
-        sta     $2A
-        lda     $29
-        sta     $2B
-LCC8D:  bit     $C055
-        lda     ($28),y
-        bit     $C054
-        sta     ($2A)
-        inc     $2A
+        lda     BASL
+        sta     BAS2L
+        lda     BASH
+        sta     BAS2H
+LCC8D:  bit     TXTPAGE2
+        lda     (BASL),y
+        bit     TXTPAGE1
+        sta     (BAS2L)
+        inc     BAS2L
         pla
-        sta     ($2A)
-        inc     $2A
+        sta     (BAS2L)
+        inc     BAS2L
         iny
         cpy     #$14
         bcc     LCC8D
@@ -1436,10 +1538,10 @@ LCC8D:  bit     $C055
         lda     $05F8
         cmp     #$18
         bcc     LCC72
-        sta     $C000
+        sta     CLR80COL
         bra     LCC64
 LCCB2:  jsr     LCCB8
-        jmp     LC5FA
+        jmp     extra::LC5FA           ; bad disasm or ...?
 
 LCCB8:  bit     $0579
         bmi     LCCD7
@@ -1450,7 +1552,7 @@ LCCBD:  bit     $05FA
         cmp     $06FF
         beq     LCCD3
         bra     LCCD5
-LCCCE:  bit     $C000
+LCCCE:  bit     KBD
         bmi     LCCD5
 LCCD3:  clc
         rts
@@ -1472,7 +1574,7 @@ LCCE1:  phx
         beq     LCCDC
         bra     LCCD5
 LCCF5:  jsr     LCCFB
-        jmp     LC5FA
+        jmp     extra::LC5FA
 
 LCCFB:  bit     $0579
         bpl     LCD03
@@ -1483,13 +1585,13 @@ LCD03:  bit     $05FA
         bpl     LCD2F
         phx
         ldx     $06FF
-        bit     $C013
+        bit     RDRAMRD
         php
-        sta     $C003
+        sta     RDCARDRAM
         lda     $0800,x
         plp
         bmi     LCD1E
-        sta     $C002
+        sta     RDMAINRAM
 LCD1E:  inx
         bne     LCD23
         ldx     #$80
@@ -1501,8 +1603,8 @@ LCD23:  stx     $06FF
         ora     #$80
         plp
         bra     LCD38
-LCD2F:  lda     $C000
-        bit     $C010
+LCD2F:  lda     KBD
+        bit     KBDSTRB
         bit     $C0B4
 LCD38:  bpl     LCD41
 LCD3A:  cmp     #$06
@@ -1595,11 +1697,11 @@ LCDD7:  jsr     LCE25
 
         eor     ($55)
         lsr     a:$0D
-        jmp     L5349
+        jmp     $5349
 
         .byte   $54
         ora     $FF00
-LCDEC:  sta     $C005
+LCDEC:  sta     WRCARDRAM
         lda     #$00
         tax
 LCDF2:  sta     $0200,x
@@ -1614,30 +1716,30 @@ LCE00:  asl     $9D
         .byte   $02
         inx
         bra     LCDFA
-        sta     $C004
+        sta     WRMAINRAM
         stz     $0579
 LCE0D:  jsr     LCDA8
         sta     $04F9
-        jmp     LC5FA
+        jmp     extra::LC5FA
 
 LCE16:  pha
-        lda     $C013
-        sta     $C002
+        lda     RDRAMRD
+        sta     RDMAINRAM
         sta     $05FB
-        sta     $C003
+        sta     RDCARDRAM
         pla
         rts
 
 LCE25:  pha
-        sta     $C002
+        sta     RDMAINRAM
         lda     $05FB
         bpl     LCE31
-        sta     $C003
+        sta     RDCARDRAM
 LCE31:  pla
         rts
 
 LCE33:  lda     #$00
-        bit     $C01A
+        bit     RDTEXT
         bmi     LCE3C
         lda     #$14
 LCE3C:  ldx     #$FB
@@ -1665,9 +1767,9 @@ LCE60:  ldx     #$FC
 LCE66:  ldx     #$FC
         ldy     #$9B
 LCE6A:  sta     $07FB
-        bit     $C012
+        bit     RDLCRAM
         php
-        bit     $C011
+        bit     RDLCBNK2
         php
         lda     #$CE
         pha
@@ -1675,7 +1777,7 @@ LCE6A:  sta     $07FB
         pha
         phx
         phy
-        bit     $C082
+        bit     ROMIN2
         lda     $07FB
         rts
 
@@ -1683,58 +1785,58 @@ LCE6A:  sta     $07FB
         bpl     LCE9A
         plp
         bpl     LCE92
-        bit     $C083
-        bit     $C083
+        bit     LCBANK2
+        bit     LCBANK2
         bra     LCEAB
-LCE92:  bit     $C081
-        bit     $C081
+LCE92:  bit     ROMIN
+        bit     ROMIN
         bra     LCEAB
 LCE9A:  plp
         bpl     LCEA5
-        bit     $C08B
-        bit     $C08B
+        bit     LCBANK1
+        bit     LCBANK1
         bra     LCEAB
 LCEA5:  .byte   $2C
 LCEA6:  bit     #$C0
         bit     $C089
-LCEAB:  lda     $28
+LCEAB:  lda     BASL
         sta     $077B
-        lda     $29
+        lda     BASH
         sta     $07FB
-        lda     $24
+        lda     CH
         sta     $057B
         rts
 
-LCEBB:  ldy     $24
+LCEBB:  ldy     CH
 LCEBD:  phy
         jsr     LCED2
-        lda     ($28),y
+        lda     (BASL),y
 LCEC3:  ply
-        bit     $C054
+        bit     TXTPAGE1
         rts
 
 LCEC8:  phy
         pha
         jsr     LCED2
         pla
-        sta     ($28),y
+        sta     (BASL),y
         bra     LCEC3
-LCED2:  bit     $C01F
+LCED2:  bit     RD80VID
         bpl     LCEDC
         tya
         lsr     a
         tay
         bcc     LCEE0
-LCEDC:  bit     $C054
+LCEDC:  bit     TXTPAGE1
         rts
 
-LCEE0:  bit     $C055
+LCEE0:  bit     TXTPAGE2
         rts
 
         eor     $4E
         ora     $4109
         .byte   $53
-        jmp     L5709
+        jmp     $5709
 
         eor     #$44
         .byte   $54
@@ -1756,10 +1858,10 @@ LCEE0:  bit     $C055
         .byte   $53
         .byte   $54
         bbr4    $52,LCF55
-        jsr     L5349
-        jsr     L4E45
+        jsr     $5349
+        jsr     $4E45
         eor     ($42,x)
-        jmp     L4445
+        jmp     $4445
 
         ora     $3B0D
         .byte   $43
@@ -1776,16 +1878,16 @@ LCF2B:  and     $312F,y
         and     $2F,x
         sec
         .byte   $36
-LCF32:  jsr     L4F46
+LCF32:  jsr     $4F46
         eor     ($20)
         pha
         eor     ($42,x)
         eor     ($20,x)
         eor     $5245
         rmb4    $45
-        jsr     L4E41
+        jsr     $4E41
         .byte   $44
-        jsr     L4F4D
+        jsr     $4F4D
         eor     $53,x
         eor     $20
         rmb5    $52
@@ -1796,7 +1898,7 @@ LCF4F:  .byte   $54
 LCF55:  eor     #$58
         .byte   $43
         bbr4    $4C,LCF64
-        jmp     L4144
+        jmp     $4144
 
         ora     #$43
         bbr4    $4C,LCF6C
@@ -1806,12 +1908,12 @@ LCF64:  eor     ($56,x)
         .byte   $54
         pha
         eor     $59
-LCF6C:  jsr     L4843
+LCF6C:  jsr     $4843
         eor     ($4E,x)
         rmb4    $45
         .byte   $44
-        jsr     L4F43
-        jmp     L3F20
+        jsr     $4F43
+        jmp     $3F20
 
         ora     $4309
         eor     $0950
@@ -1824,7 +1926,7 @@ LCF6C:  jsr     L4843
         eor     $5345,y
         .byte   $20
         .byte   $2D
-LCF94:  jsr     L5355
+LCF94:  jsr     $5355
         eor     $20
         .byte   $54
         pha
@@ -1842,27 +1944,27 @@ LCF94:  jsr     L5355
         eor     $20
         eor     $53,x
         eor     $20
-LCFB7:  bbr4    $55,LD00C
+LCFB7:  bbr4    $55,$D00C
         .byte   $53
-        jsr     L5428
+        jsr     $5428
         pha
         eor     $59
-        jsr     L494D
+        jsr     $494D
         rmb4    $48
         .byte   $54
-LCFC7:  jsr     L4148
+LCFC7:  jsr     $4148
         lsr     $45,x
         ora     $093B
         ora     #$09
-        jsr     L2020
+        jsr     $2020
         .byte   $43
         pha
         eor     ($4E,x)
         rmb4    $45
         .byte   $44
-        jsr     L4854
+        jsr     $4854
         eor     #$53
-        jsr     L4F54
+        jsr     $4F54
         bbr4    $29,LCFF3
         rol     $0932
         .byte   $53
