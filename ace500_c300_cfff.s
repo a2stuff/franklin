@@ -178,7 +178,7 @@ LC371:  jsr     LC96F
         cmp     #$8D
         bne     LC381
         pha
-        jsr     DoCLREOL
+        jsr     DoClearEOL
         pla
 LC381:  cmp     #$95
         bne     LC38A
@@ -948,7 +948,7 @@ LC814:  lda     #$30
         sta     MODE
         jsr     LCBD7
         jsr     LCE33
-        jmp     DoHOME
+        jmp     DoHomeAndClear
 
 LC822:  jsr     LCBE1
 LC825:  inc     RNDL
@@ -960,7 +960,7 @@ LC82B:  jsr     LCCB8
         cmp     #$06
         bcc     LC840
         .byte   $29
-LC838:  bbr7    $8D,LC8B6
+LC838:  bbr7    $8D,$C8B6
 LC83B:  asl     $09
         bra     $C7BF           ; bad disasm?
         .byte   $03
@@ -984,7 +984,7 @@ LC859:  lda     $067B
         ldy     CH
         cpy     WNDWDTH
         bcc     LC86B
-        jsr     LCA79
+        jsr     DoReturn
 LC86B:  lda     $067B
         bit     INVFLG
         bmi     LC888
@@ -999,7 +999,7 @@ LC86B:  lda     $067B
         bcs     LC888
         and     #$1F
 LC888:  jsr     LCC13
-        jmp     LCA71
+        jmp     DoForwardSpace
 
 ;;; ============================================================
 
@@ -1016,37 +1016,36 @@ DoCtrlCharOut:
         bcc     DoNothing
         asl     a
         tax
-        jmp     (LC899,x)
+        jmp     (jt1,x)
 
         ;; Jump Table
 
-LC899:  .byte   $42
-        dec     LCA59
-        stx     $7BC8
-        dex
-        phy
-        dec     DoHOME
-        adc     $E6CA,y
-        cmp     #$E3
-        cmp     #$8E
-LC8AC:  iny
-        .byte   $5C
-        cmp     #$EB
-        cmp     #$8E
-        iny
-        stx     $FEC8
-LC8B6:  cmp     #$05
-        wai
-        tay
-        dex
-        bbr1    $CA,$C847
-        dex
-        bbs0    $CA,$C8E8
-        dex
-        adc     ($CA),y
-        ror     $CE
-LC8C7:  asl     $CA,x
-        adc     #$CA
+jt1:
+        .addr   DoBell          ; $07 Ctrl-G Bell
+        .addr   DoBackspace     ; $08 Ctrl-H Backspace
+        .addr   DoNothing       ; $09 Ctrl-I
+        .addr   DoLineFeed      ; $0A Ctrl-J Line feed
+        .addr   DoClearEOS      ; $0B Ctrl-K Clear EOS
+        .addr   DoHomeAndClear  ; $0C Ctrl-L Home and clear
+        .addr   DoReturn        ; $0D Ctrl-M Return
+        .addr   DoNormal        ; $0E Ctrl-N Normal
+        .addr   DoInverse       ; $0F Ctrl-O Inverse
+        .addr   DoNothing       ; $10 Ctrl-P
+        .addr   Do40Col         ; $11 Ctrl-Q 40-column
+        .addr   Do80Col         ; $12 Ctrl-R 80-column
+        .addr   DoNothing       ; $13 Ctrl-S
+        .addr   DoNothing       ; $14 Ctrl-T
+        .addr   DoQuit          ; $15 Ctrl-U Quit
+        .addr   DoScroll        ; $16 Ctrl-V Scroll
+        .addr   DoScrollUp      ; $17 Ctrl-W Scroll-up
+        .addr   DoDisableMouseText ; $18 Ctrl-X Disable MouseText
+        .addr   DoHome          ; $19 Ctrl-Y Home
+        .addr   DoClearLine     ; $1A Ctrl-Z Clear line
+        .addr   DoEnableMouseText ; $1B Ctrl-[ Enable MouseText
+        .addr   DoForwardSpace  ; $1C Ctrl-\ Forward space
+        .addr   DoClearEOL      ; $1D Ctrl-] Clear EOL
+        .addr   XC9F8           ; $1E Ctrl-^ ???
+        .addr   DoUp            ; $1F Ctrl-_ Up
 
 ;;; ============================================================
 ;;; GetLn handling
@@ -1155,7 +1154,10 @@ LC958:  ora     $A9
         .byte   $8D
 LC95B:  rts
 
-LC95C:  bit     RD80VID
+;;; ============================================================
+
+Do40Col:
+        bit     RD80VID
         php
         jsr     LCBD0
         jsr     LCAFA
@@ -1216,20 +1218,32 @@ LC9C0:  lda     CH
 LC9CA:  sta     CH
 LC9CC:  rts
 
-LC9CD:  jsr     LCA69
+LC9CD:  jsr     DoUp
         bra     LC9DF
-        jsr     LCA7B
+        jsr     DoLineFeed
         bra     LC9DF
-        jsr     LCA71
+        jsr     DoForwardSpace
         bra     LC9DF
-        jsr     LCA59
+
+;;; ============================================================
+
+        jsr     DoBackspace
 LC9DF:  lda     #$80
         bra     LCA28
+
+;;; ============================================================
+
+DoInverse:
         ldy     #$3F
-        bit     $FFA0
+        .byte   OPC_BIT_abs     ; skip next instruction
+DoNormal:
+        ldy     #$FF
         sty     INVFLG
 LC9EA:  rts
 
+;;; ============================================================
+
+Do80Col:
         bit     RD80VID
         php
         jsr     LCBD7
@@ -1239,7 +1253,10 @@ LC9EA:  rts
         bmi     LC9EA
         jmp     LCC18
 
-        jsr     LC95C
+;;; ============================================================
+
+DoQuit:
+        jsr     Do40Col
         jsr     DoSETVID
         jsr     DoSETKBD
         lda     #$17
@@ -1250,13 +1267,25 @@ LC9EA:  rts
         lda     #$98
         rts
 
+;;; ============================================================
+
+XC9F8:
         lda     #$FC
         jsr     LCA21
         lda     #$32
         bra     LCA28
-        lda     #$40
+
+;;; ============================================================
+
+DoDisableMouseText:
+        lda     #$40            ; BUG! Should be ~$40
 LCA21:  and     MODE
         bra     LCA2B
+
+;;; ============================================================
+
+
+DoEnableMouseText:
         lda     #$40
 LCA28:  ora     MODE
 LCA2B:  sta     MODE
@@ -1285,42 +1314,72 @@ LCA54:  pla
         sta     $05F8
         rts
 
-LCA59:  lda     CH
+;;; ============================================================
+
+DoBackspace:
+        lda     CH
         beq     LCA60
         dec     CH
 LCA5F:  rts
+
+;;; ============================================================
 
 LCA60:  lda     CV
         beq     LCA5F
         lda     WNDWDTH
         dec     a
         sta     CH
-LCA69:  lda     CV
+
+DoUp:   lda     CV
         beq     LCA5F
         dec     CV
         bra     LCAA5
-LCA71:  inc     CH
+
+;;; ============================================================
+
+DoForwardSpace:
+        inc     CH
         lda     CH
         cmp     WNDWDTH
         bcc     LCA5F
-LCA79:  stz     CH
-LCA7B:  lda     CV
+        ;; fall through
+
+;;; ============================================================
+
+DoReturn:
+        stz     CH
+        ;; fall through
+
+;;; ============================================================
+
+DoLineFeed:
+        lda     CV
         cmp     #$FF
         beq     LCA85
         cmp     #$17
-        bcs     LCAA8
+        bcs     DoScrollUp
 LCA85:  inc     CV
         bra     LCAA5
-LCA89:  lda     WNDTOP
+
+;;; ============================================================
+
+DoHome:
+        lda     WNDTOP
         ldx     #$00
         bra     LCAA1
-LCA8F:  lda     CH
+
+;;; ============================================================
+
+DoClearLine:
+        lda     CH
         pha
         stz     CH
-        jsr     DoCLREOL
+        jsr     DoClearEOL
         pla
         sta     CH
         rts
+
+;;; ============================================================
 
 LCA9B:  lda     $06F8
         ldx     $0778
@@ -1328,9 +1387,12 @@ LCAA1:  stx     CH
 LCAA3:  sta     CV
 LCAA5:  jmp     DoMON_VTAB
 
-LCAA8:  lda     CH
+;;; ============================================================
+
+DoScrollUp:
+        lda     CH
         pha
-        jsr     LCA89
+        jsr     DoHome
 LCAAE:  ldy     BASH
         sty     BAS2H
         ldy     BASL
@@ -1366,7 +1428,7 @@ LCADA:  bit     TXTPAGE1
         bit     TXTPAGE1
         bra     LCAAE
 LCAF0:  stz     CH
-        jsr     DoCLREOL
+        jsr     DoClearEOL
         plx
         lda     CV
         bra     LCAA1
@@ -1376,6 +1438,9 @@ LCAFA:  lda     CV
         sta     $0778
         rts
 
+;;; ============================================================
+
+DoScroll:
         jsr     LCAFA
         lda     WNDBTM
         dec     a
@@ -1414,7 +1479,7 @@ LCB38:  lda     (BAS2L),y
         bra     LCB0F
 LCB4F:  lda     #$00
         jsr     LCAA3
-        jsr     LCA8F
+        jsr     DoClearLine
         bit     TXTPAGE1
         jmp     LCA9B
 
@@ -1826,19 +1891,19 @@ DoMON_VTAB:
 
 ;;; ============================================================
 
-DoCLREOP:
+DoClearEOS:
         LDXY    CLREOP
         bra     ROMCall
 
 ;;; ============================================================
 
-DoHOME:
+DoHomeAndClear:
         LDXY    HOME
         bra     ROMCall
 
 ;;; ============================================================
 
-DoCLREOL:
+DoClearEOL:
         LDXY    CLREOL
         ;; fall through
 
