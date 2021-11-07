@@ -4,7 +4,9 @@ LDFLAGS := --config apple2-asm.cfg
 
 OUTDIR := out
 
-TARGETS := $(OUTDIR)/u2_disasm.bin
+TARGETS := \
+	$(OUTDIR)/ace500_c300_cfff.bin \
+	$(OUTDIR)/ace2000_c300_cfff.bin
 
 .PHONY: clean all package
 all: $(OUTDIR) $(TARGETS)
