@@ -31,6 +31,8 @@ RNDH    := $4F
 ;;; Page 3 Vectors
 
 XFERVEC := $3ED
+L03F0   := $3F0                 ; ???
+L03FE   := $3FE                 ; ???
 
 ;;; Screen Holes
 
@@ -114,11 +116,6 @@ CLREOL  := $FC9C
 
 ;;; ============================================================
 
-L03F0           := $03F0
-L03FE           := $03FE
-
-;;; ============================================================
-
         .org $C300
 
 LC300:  bit     LC3D4
@@ -154,9 +151,9 @@ LC33B:  jsr     extra_LC5FA
         jmp     LCC06
 
 LC341:  jsr     LC3C4
-        sta     $04F8
-        stx     $0578
-        sty     $0478
+        sta     SAVEA
+        stx     SAVEX
+        sty     SAVEY
         pha
         bvc     LC354
         jsr     LC806
@@ -166,7 +163,7 @@ LC354:  php
         plp
         pla
         bcc     LC397
-        ldx     $0578
+        ldx     SAVEX
         beq     LC371
         dex
         lda     $0678
@@ -181,7 +178,7 @@ LC371:  jsr     LC96F
         cmp     #$8D
         bne     LC381
         pha
-        jsr     LCE66
+        jsr     DoCLREOL
         pla
 LC381:  cmp     #$95
         bne     LC38A
@@ -193,21 +190,21 @@ LC38F:  jsr     LC822
         stz     $0678
 LC395:  bra     LC39D
 LC397:  jsr     LC849
-        lda     $04F8
-LC39D:  ldx     $0578
+        lda     SAVEA
+LC39D:  ldx     SAVEX
         ldy     CH
-        sty     $057B
-        sty     $06FB
-        ldy     $0478
+        sty     OURCH
+        sty     XCOORD
+        ldy     SAVEY
         jmp     extra_LC5FA
 
 LC3AE:  lda     #$80
-        tsb     $04FB
+        tsb     MODE
         jsr     LC822
         jsr     LC8CB
         cmp     #$98
         beq     LC38A
-        lda     $04FB
+        lda     MODE
         bmi     LC3AE
         bra     LC371
 LC3C4:  php
@@ -697,11 +694,12 @@ LC684:  jsr     LC5FA
         brk
         brk
         brk
-        ldy     #$56
+
+        ldy     #$56            ; ???
         sty     A1L
         sec
         clv
-        jmp     LCE51
+        jmp     $CE51
 
         nop
         nop
@@ -935,10 +933,10 @@ LC806:  lda     #$05
         sta     $36
         stx     $37
 LC814:  lda     #$30
-        sta     $04FB
+        sta     MODE
         jsr     LCBD7
         jsr     LCE33
-        jmp     LCE60
+        jmp     DoHOME
 
 LC822:  jsr     LCBE1
 LC825:  inc     RNDL
@@ -962,7 +960,7 @@ LC847:  pla
 
 LC849:  sta     $067B
 LC84C:  jsr     LC92A
-        lda     $04FB
+        lda     MODE
         and     #$03
         beq     LC859
         jmp     LCA2F
@@ -979,7 +977,7 @@ LC86B:  lda     $067B
         bit     INVFLG
         bmi     LC888
         and     #$7F
-        bit     $04FB
+        bit     MODE
         bvs     LC888
         bit     ALTCHARSET
         bpl     LC888
@@ -1004,7 +1002,7 @@ LC899:  .byte   $42
         stx     $7BC8
         dex
         phy
-        dec     LCE60
+        dec     DoHOME
         adc     $E6CA,y
         cmp     #$E3
         cmp     #$8E
@@ -1167,9 +1165,9 @@ LC9B4:  bit     RD80VID
         asl     WNDWDTH
         sta     SET80COL
 LC9C0:  lda     CH
-        cmp     $06FB
+        cmp     XCOORD
         bne     LC9CA
-        lda     $057B
+        lda     OURCH
 LC9CA:  sta     CH
 LC9CC:  rts
 
@@ -1197,13 +1195,13 @@ LC9EA:  rts
         jmp     LCC18
 
         jsr     LC95C
-        jsr     LCE4E
-        jsr     LCE48
+        jsr     DoSETVID
+        jsr     DoSETKBD
         lda     #$17
         ldx     #$00
         jsr     LCAA1
         lda     #$FF
-        sta     $04FB
+        sta     MODE
         lda     #$98
         rts
 
@@ -1212,11 +1210,11 @@ LC9EA:  rts
         lda     #$32
         bra     LCA28
         lda     #$40
-LCA21:  and     $04FB
+LCA21:  and     MODE
         bra     LCA2B
         lda     #$40
-LCA28:  ora     $04FB
-LCA2B:  sta     $04FB
+LCA28:  ora     MODE
+LCA2B:  sta     MODE
         rts
 
 LCA2F:  lda     $067B
@@ -1224,8 +1222,8 @@ LCA2F:  lda     $067B
         sbc     #$20
         and     #$7F
         pha
-        dec     $04FB
-        lda     $04FB
+        dec     MODE
+        lda     MODE
         and     #$03
         bne     LCA54
         pla
@@ -1274,7 +1272,7 @@ LCA89:  lda     WNDTOP
 LCA8F:  lda     CH
         pha
         stz     CH
-        jsr     LCE66
+        jsr     DoCLREOL
         pla
         sta     CH
         rts
@@ -1283,7 +1281,7 @@ LCA9B:  lda     $06F8
         ldx     $0778
 LCAA1:  stx     CH
 LCAA3:  sta     CV
-LCAA5:  jmp     LCE54
+LCAA5:  jmp     DoMON_VTAB
 
 LCAA8:  lda     CH
         pha
@@ -1323,7 +1321,7 @@ LCADA:  bit     TXTPAGE1
         bit     TXTPAGE1
         bra     LCAAE
 LCAF0:  stz     CH
-        jsr     LCE66
+        jsr     DoCLREOL
         plx
         lda     CV
         bra     LCAA1
@@ -1378,8 +1376,8 @@ LCB4F:  lda     #$00
 LCB5D:  jsr     LC814
 LCB60:  jsr     LCBE1
 LCB63:  ldx     CH
-        stx     $057B
-        stx     $06FB
+        stx     OURCH
+        stx     XCOORD
         ldx     #$00
         rts
 
@@ -1415,9 +1413,9 @@ LCBAD:  ldx     #$03
         rts
 
 LCBB1:  pha
-        lda     $077B
+        lda     OLDBASL
         sta     BASL
-        lda     $07FB
+        lda     OLDBASH
         sta     BASH
         stz     WNDTOP
         stz     WNDLFT
@@ -1439,17 +1437,17 @@ LCBD7:  sta     SET80COL
         sta     SETALTCHAR
         rts
 
-LCBE1:  lda     $04FB
+LCBE1:  lda     MODE
         cmp     #$FF
         beq     LCC04
         and     #$80
         beq     LCC04
         jsr     LCEBB
-        sta     $047B
+        sta     OLDCH
         and     #$80
         eor     #$AB
         bra     LCC13
-LCBF8:  lda     $04FB
+LCBF8:  lda     MODE
         and     #$80
         beq     LCC04
         .byte   $AD
@@ -1725,14 +1723,14 @@ LCE0D:  jsr     LCDA8
 LCE16:  pha
         lda     RDRAMRD
         sta     RDMAINRAM
-        sta     $05FB
+        sta     OURCV
         sta     RDCARDRAM
         pla
         rts
 
 LCE25:  pha
         sta     RDMAINRAM
-        lda     $05FB
+        lda     OURCV
         bpl     LCE31
         sta     RDCARDRAM
 LCE31:  pla
@@ -1740,33 +1738,55 @@ LCE31:  pla
 
 LCE33:  lda     #$00
         bit     RDTEXT
-        bmi     LCE3C
+        bmi     DoSETWND
         lda     #$14
-LCE3C:  ldx     #$FB
-        ldy     #$4A
-        bra     LCE6A
-        ldx     #$FB
-        ldy     #$E1
-        bra     LCE6A
-LCE48:  ldx     #$FE
-        ldy     #$88
-        bra     LCE6A
-LCE4E:  ldx     #$FE
-        .byte   $A0
-LCE51:  sta     ($80)
-        .byte   $16
-LCE54:  ldx     #$FC
-        ldy     #$21
-        bra     LCE6A
-        ldx     #$FC
-        ldy     #$41
-        bra     LCE6A
-LCE60:  ldx     #$FC
-        ldy     #$57
-        bra     LCE6A
-LCE66:  ldx     #$FC
-        ldy     #$9B
-LCE6A:  sta     $07FB
+
+;;; ============================================================
+
+;;; Load X,Y with address of a routine -1 (for `ROMCall`)
+.macro LDXY addr
+        ldx     #.hibyte(addr-1)
+        ldy     #.lobyte(addr-1)
+.endmacro
+
+;;; ============================================================
+
+DoSETWND:
+        LDXY    SETWND
+        bra     ROMCall
+
+DoBell:
+        LDXY    BELLB
+        bra     ROMCall
+
+DoSETKBD:
+        LDXY    SETKBD
+        bra     ROMCall
+
+DoSETVID:
+        LDXY    SETVID
+        bra     ROMCall
+
+DoMON_VTAB:
+        LDXY    MON_VTAB
+        bra     ROMCall
+
+DoCLREOP:
+        LDXY    CLREOP
+        bra     ROMCall
+
+DoHOME:
+        LDXY    HOME
+        bra     ROMCall
+
+DoCLREOL:
+        LDXY    CLREOL
+        ;; fall through
+
+;;; ============================================================
+
+ROMCall:
+        sta     TEMP2
         bit     RDLCRAM
         php
         bit     RDLCBNK2
@@ -1778,7 +1798,7 @@ LCE6A:  sta     $07FB
         phx
         phy
         bit     ROMIN2
-        lda     $07FB
+        lda     TEMP2
         rts
 
         plp
@@ -1800,11 +1820,11 @@ LCEA5:  .byte   $2C
 LCEA6:  bit     #$C0
         bit     $C089
 LCEAB:  lda     BASL
-        sta     $077B
+        sta     OLDBASL
         lda     BASH
-        sta     $07FB
+        sta     OLDBASH
         lda     CH
-        sta     $057B
+        sta     OURCH
         rts
 
 LCEBB:  ldy     CH
