@@ -56,7 +56,7 @@ M_NORMAL= %00110000
 
 OURCH   := $57B
 OURCV   := $5FB
-CHAR    := $67B                 ; Unused
+CHAR    := $67B
 XCOORD  := $6FB
 TEMP1   := $77B                 ; Unused
 OLDBASL := $77B
@@ -964,20 +964,20 @@ LC838:  bbr7    $8D,$C8B6
 LC83B:  asl     $09
         bra     $C7BF           ; bad disasm?
         .byte   $03
-LC840:  sta     $067B
+LC840:  sta     CHAR
         pha
         jsr     LCBF8
 LC847:  pla
         rts
 
-LC849:  sta     $067B
+LC849:  sta     CHAR
 LC84C:  jsr     LC92A
         lda     MODE
         and     #$03
         beq     LC859
         jmp     LCA2F
 
-LC859:  lda     $067B
+LC859:  lda     CHAR
         and     #$7F
         cmp     #$20
         bcc     DoCtrlCharOut
@@ -985,7 +985,7 @@ LC859:  lda     $067B
         cpy     WNDWDTH
         bcc     LC86B
         jsr     DoReturn
-LC86B:  lda     $067B
+LC86B:  lda     CHAR
         bit     INVFLG
         bmi     LC888
         and     #$7F
@@ -1073,7 +1073,7 @@ LC8E0:  ldy     code_table,x
 LC8ED:  txa
         asl     a
         tax
-        jmp     (LC906,x)
+        jmp     (jt2,x)
 
 code_table:
         .byte   '@'             ; Escape @ - clear, home & exit mode
@@ -1098,29 +1098,26 @@ code_table:
         .byte   $00             ; sentinel
 
 
-
-LC906:  rts
-
-        .byte   $CE
-LC908:  adc     ($CA),y
-        eor     $7BCA,y
-        dex
-        adc     #$CA
-        ror     $CE
-        phy
-        dec     LC9CD
-LC916:  .byte   $DC
-        cmp     #$D7
-        cmp     #$D2
-        cmp     #$CD
-        cmp     #$D2
-        cmp     #$DC
-        .byte   $C9
-LC922:  smb5    $C9
-        .byte   $5C
-        cmp     #$EB
-        cmp     #$FE
-        .byte   $C9
+        ;; Jump table
+jt2:
+        .addr   DoHomeAndClear  ; Escape @ - clear, home & exit mode
+        .addr   DoForwardSpace  ; Escape A - right & exit mode
+        .addr   DoBackspace     ; Escape B - left & exit mode
+        .addr   DoLineFeed      ; Escape C - down & exit mode
+        .addr   DoUp            ; Escape D - up & exit mode
+        .addr   DoClearEOL      ; Escape E - clear EOL & exit mode
+        .addr   DoClearEOS      ; Escape F - clear EOS & exit mode
+        .addr   DoUpRemain      ; Escape I - up
+        .addr   DoLeftRemain    ; Escape J - left
+        .addr   DoRightRemain   ; Escape K - right
+        .addr   DoDownRemain    ; Escape M - down
+        .addr   DoUpRemain      ; Escape up - up
+        .addr   DoDownRemain    ; Escape down - down
+        .addr   DoLeftRemain    ; Escape left - left
+        .addr   DoRightRemain   ; Escape right - right
+        .addr   Do40Col         ; Escape 4 - 40 col mode
+        .addr   Do80Col         ; Escape 8 - 80 col mode
+        .addr   DoQuit          ; Escape Ctrl+Q - deactivate
 
 ;;; ============================================================
 
@@ -1218,18 +1215,26 @@ LC9C0:  lda     CH
 LC9CA:  sta     CH
 LC9CC:  rts
 
-LC9CD:  jsr     DoUp
-        bra     LC9DF
-        jsr     DoLineFeed
-        bra     LC9DF
-        jsr     DoForwardSpace
-        bra     LC9DF
-
 ;;; ============================================================
 
+DoUpRemain:
+        jsr     DoUp
+        bra     Remain
+
+DoDownRemain:
+        jsr     DoLineFeed
+        bra     Remain
+
+DoRightRemain:
+        jsr     DoForwardSpace
+        bra     Remain
+
+DoLeftRemain:
         jsr     DoBackspace
-LC9DF:  lda     #$80
-        bra     LCA28
+        ;; fall through
+
+Remain: lda     #$80
+        bra     SetModeBits
 
 ;;; ============================================================
 
@@ -1268,30 +1273,31 @@ DoQuit:
         rts
 
 ;;; ============================================================
+;;; Adusting MODE Bits
 
 DoCtrlCaret:
         lda     #$FC
-        jsr     LCA21
+        jsr     PreserveModeBits
         lda     #$32
-        bra     LCA28
-
-;;; ============================================================
+        bra     SetModeBits
 
 DoDisableMouseText:
-        lda     #$40            ; BUG! Should be ~$40
-LCA21:  and     MODE
-        bra     LCA2B
+        lda     #M_MOUSE            ; BUG! Should be ~M_MOUSE
+PreserveModeBits:
+        and     MODE
+        bra     StoreMode
+
+DoEnableMouseText:
+        lda     #M_MOUSE
+SetModeBits:
+        ora     MODE
+StoreMode:
+        sta     MODE
+        rts
 
 ;;; ============================================================
 
-
-DoEnableMouseText:
-        lda     #$40
-LCA28:  ora     MODE
-LCA2B:  sta     MODE
-        rts
-
-LCA2F:  lda     $067B
+LCA2F:  lda     CHAR
         sec
         sbc     #$20
         and     #$7F
@@ -1306,9 +1312,9 @@ LCA2F:  lda     $067B
         jsr     LCAA3
 LCA4A:  lda     $05F8
         cmp     WNDWDTH
-        bcs     LCA53
+        bcs     :+
         sta     CH
-LCA53:  rts
+:       rts
 
 LCA54:  pla
         sta     $05F8
@@ -1493,14 +1499,14 @@ LCB63:  ldx     CH
 
 LCB6E:  jsr     LCBB1
         jsr     LC822
-        lda     $067B
+        lda     CHAR
         bra     LCB63
-LCB79:  sta     $067B
+LCB79:  sta     CHAR
         jsr     LCBB1
         jsr     LCBF8
-        lda     $067B
+        lda     CHAR
         ora     #$80
-        sta     $067B
+        sta     CHAR
         and     #$7F
         cmp     #$15
         beq     LCB63

@@ -55,7 +55,7 @@ M_NORMAL= %00110000
 
 OURCH   := $57B
 OURCV   := $5FB
-CHAR    := $67B                 ; Unused
+CHAR    := $67B
 XCOORD  := $6FB
 TEMP1   := $77B                 ; Unused
 OLDBASL := $77B
@@ -784,8 +784,12 @@ DoRightRemain:
 
 DoLeftRemain:
         jsr     DoBackspace
+        ;; fall through
+
 Remain: lda     #M_ESC          ; stay in Escape Mode
         jmp     SetModeBits
+
+;;; ============================================================
 
 DoInverse:
         ldy     #$3F
@@ -796,6 +800,8 @@ DoNormal:
 LC9CA:  sty     INVFLG
 rts4:   rts
 
+;;; ============================================================
+
 Do80Col:
         bit     RD80VID
         php
@@ -805,6 +811,8 @@ Do80Col:
         plp
         bmi     rts4
         jmp     LCBFE
+
+;;; ============================================================
 
 DoQuit:
         jsr     Do40Col
