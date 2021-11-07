@@ -205,7 +205,7 @@ EscapeMode:
         lda     #M_ESC
         tsb     MODE
         jsr     LC822
-        jsr     LC8CB
+        jsr     ProcessEscapeModeKey
         cmp     #$98
         beq     LC38A
         lda     MODE
@@ -532,7 +532,7 @@ LC5BC:  bit     $C1C1
         sta     $C090
         bra     LC594
 LC5C6:  jsr     LC594
-        jsr     LC9A5
+        jsr     $C9A5
         bra     LC5A8
         brk
         brk
@@ -595,7 +595,7 @@ LC60D:  lda     LCF26,y
 LC618:  inc     BAS2H
         cpx     BAS2H
         bne     LC618
-        jsr     LCEA6
+        jsr     $CEA6
 LC621:  dec     $41
         bne     LC621
 LC625:  dec     A1H
@@ -977,35 +977,37 @@ LC840:  sta     CHAR
 LC847:  pla
         rts
 
+;;; ============================================================
+
 LC849:  sta     CHAR
-LC84C:  jsr     LC92A
+LC84C:  jsr     CheckPauseListing
         lda     MODE
         and     #$03
-        beq     LC859
+        beq     @l1
         jmp     LCA2F
 
-LC859:  lda     CHAR
+@l1:    lda     CHAR
         and     #$7F
         cmp     #$20
         bcc     DoCtrlCharOut
         ldy     CH
         cpy     WNDWDTH
-        bcc     LC86B
+        bcc     @l2
         jsr     DoReturn
-LC86B:  lda     CHAR
+@l2:    lda     CHAR
         bit     INVFLG
-        bmi     LC888
+        bmi     @l3
         and     #$7F
         bit     MODE
-        bvs     LC888
+        bvs     @l3
         bit     ALTCHARSET
-        bpl     LC888
+        bpl     @l3
         cmp     #$40
-        bcc     LC888
+        bcc     @l3
         cmp     #$60
-        bcs     LC888
+        bcs     @l3
         and     #$1F
-LC888:  jsr     LCC13
+@l3:    jsr     LCC13
         jmp     DoForwardSpace
 
 ;;; ============================================================
@@ -1023,11 +1025,9 @@ DoCtrlCharOut:
         bcc     DoNothing
         asl     a
         tax
-        jmp     (jt1,x)
+        jmp     (@jt,x)
 
-        ;; Jump Table
-
-jt1:
+@jt:
         .addr   DoBell          ; $07 Ctrl-G Bell
         .addr   DoBackspace     ; $08 Ctrl-H Backspace
         .addr   DoNothing       ; $09 Ctrl-I
@@ -1055,34 +1055,35 @@ jt1:
         .addr   DoUp            ; $1F Ctrl-_ Up
 
 ;;; ============================================================
-;;; GetLn handling
 ;;; For Escape key sequences
 
-LC8CB:  pha
+ProcessEscapeModeKey:
+        pha
         lda     #M_ESC
         trb     MODE
         pla
         and     #$7F
-        cmp     #$61
-        bcc     LC8DE
-        cmp     #$7B
-        bcs     LC8DE
-        and     #$DF
+        cmp     #'a'
+        bcc     @l1
+        cmp     #'z'+1
+        bcs     @l1
+        and     #$DF            ; convert to uppercase
 
-LC8DE:  ldx     #$00
-LC8E0:  ldy     code_table,x
+        ;; Scan table for match
+@l1:    ldx     #$00
+@l2:    ldy     @code_table,x
         beq     DoNothing
-        cmp     code_table,x
-        beq     LC8ED
+        cmp     @code_table,x
+        beq     @l3
         inx
-        bra     LC8E0
+        bra     @l2
 
-LC8ED:  txa
+@l3:    txa
         asl     a
         tax
-        jmp     (jt2,x)
+        jmp     (@jt,x)
 
-code_table:
+@code_table:
         .byte   '@'             ; Escape @ - clear, home & exit mode
         .byte   'A'             ; Escape A - right & exit mode
         .byte   'B'             ; Escape B - left & exit mode
@@ -1104,9 +1105,7 @@ code_table:
 
         .byte   $00             ; sentinel
 
-
-        ;; Jump table
-jt2:
+@jt:
         .addr   DoHomeAndClear  ; Escape @ - clear, home & exit mode
         .addr   DoForwardSpace  ; Escape A - right & exit mode
         .addr   DoBackspace     ; Escape B - left & exit mode
@@ -1128,7 +1127,7 @@ jt2:
 
 ;;; ============================================================
 
-LC92A:
+CheckPauseListing:
         lda     KBD
         cmp     #$93            ; Ctrl-S
         bne     @l3
@@ -1145,14 +1144,14 @@ LC92A:
 
 LC941:  ldy     #$00
         ldx     #$00
-LC945:  cpy     WNDWDTH
-        bcs     LC953
+@l1:    cpy     WNDWDTH
+        bcs     @l2
         jsr     LC9A8
         sta     $0200,x
         inx
         iny
-        bra     LC945
-LC953:  dey
+        bra     @l1
+@l2:    dey
         sty     CH
         .byte   $8E             ; bad disasm
         sei
@@ -1176,43 +1175,48 @@ Do40Col:
 
 LC96F:  jsr     LC822
         cmp     #$00
-        beq     LC997
+        beq     @l4
         cmp     #$02
         beq     LC941
         cmp     #$05
         bne     LC95B
         ldy     CH
-LC980:  iny
+@l1:    iny
         cpy     WNDWDTH
-        beq     LC98F
+        beq     @l2
         jsr     LC9A8
         dey
         jsr     LCEC8
         iny
-        bra     LC980
+        bra     @l1
 
-LC98F:  dey
-LC990:  lda     #$A0
+@l2:    dey
+@l3:    lda     #$A0
         jsr     LCEC8
         bra     LC96F
 
-LC997:  ldy     WNDWDTH
+@l4:    ldy     WNDWDTH
         dey
         cpy     CH
-        beq     LC990
+        beq     @l3
         dey
-        .byte   $20
-LC9A0:  tay
+        .byte   $20             ; bad disasm
+        tay
         cmp     #$C8
         .byte   $20
         iny
-LC9A5:  dec     $F180
+        dec     $F180
+
+;;; ============================================================
+
 LC9A8:  jsr     LCEBD
         ora     #$80
         cmp     #$A0
-        bcs     LC9B3
+        bcs     @l1
         ora     #$40
-LC9B3:  rts
+@l1:    rts
+
+;;; ============================================================
 
 LC9B4:  bit     RD80VID
         bpl     LC9CC
@@ -1934,9 +1938,9 @@ ROMCall:
         php
         bit     RDLCBNK2
         php
-        lda     #.hibyte(LCE84-1)
+        lda     #.hibyte(ROMCallReturn-1)
         pha
-        lda     #.lobyte(LCE84-1)
+        lda     #.lobyte(ROMCallReturn-1)
         pha
         phx
         phy
@@ -1944,37 +1948,36 @@ ROMCall:
         lda     TEMP2
         rts
 
-;;; ============================================================
-
-;;; Return from ROMCall
-LCE84:  plp
-        bpl     LCE9A
+ROMCallReturn:
         plp
-        bpl     LCE92
+        bpl     @l2
+        plp
+        bpl     @l1
         bit     LCBANK2
         bit     LCBANK2
-        bra     LCEAB
+        bra     @l4
 
-LCE92:  bit     ROMIN
+@l1:    bit     ROMIN
         bit     ROMIN
-        bra     LCEAB
+        bra     @l4
 
-LCE9A:  plp
-        bpl     LCEA5
+@l2:    plp
+        bpl     @l3
         bit     LCBANK1
         bit     LCBANK1
-        bra     LCEAB
+        bra     @l4
 
-LCEA5:  .byte   $2C
-LCEA6:  bit     #$C0
-        bit     $C089
-LCEAB:  lda     BASL
+@l3:    bit     $C089           ; ???
+        bit     $C089           ; ???
+@l4:    lda     BASL
         sta     OLDBASL
         lda     BASH
         sta     OLDBASH
         lda     CH
         sta     OURCH
         rts
+
+;;; ============================================================
 
 LCEBB:  ldy     CH
 LCEBD:  phy
@@ -1984,22 +1987,29 @@ LCEC3:  ply
         bit     TXTPAGE1
         rts
 
-LCEC8:  phy
+;;; ============================================================
+
+LCEC8:
+        phy
         pha
         jsr     LCED2
         pla
         sta     (BASL),y
         bra     LCEC3
-LCED2:  bit     RD80VID
-        bpl     LCEDC
+
+;;; ============================================================
+
+LCED2:
+        bit     RD80VID
+        bpl     @l1
         tya
         lsr     a
         tay
-        bcc     LCEE0
-LCEDC:  bit     TXTPAGE1
+        bcc     @l2
+@l1:    bit     TXTPAGE1
         rts
 
-LCEE0:  bit     TXTPAGE2
+@l2:    bit     TXTPAGE2
         rts
 
 ;;; ============================================================
