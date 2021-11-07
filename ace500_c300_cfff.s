@@ -284,35 +284,35 @@ LC429:  jmp     LC825
 LC42E:  rts
 
         jsr     LC5FA
-        jmp     LC8D4
+        jmp     $C8D4
 
         jsr     LC5FA
-        jmp     LC916
+        jmp     $C916
 
         jsr     LC5FA
-        jmp     LC922
+        jmp     $C922
 
         jsr     LC5FA
-        jmp     LC958
+        jmp     $C958
 
         jsr     LC5FA
-        jmp     LC967
+        jmp     $C967
 
         jsr     LC5FA
-        jmp     LC969
+        jmp     $C969
 
         jsr     LC5FA
-        jmp     LC93E
+        jmp     $C93E
 
 LC459:  jsr     LC5FA
-        jmp     LC8AC
+        jmp     $C8AC
 
         ldx     $C066
         ldy     $C067
         jmp     $C220
 
 LC468:  jsr     LC5FA
-        jmp     LC9A0
+        jmp     $C9A0
 
         brk
         brk
@@ -428,60 +428,72 @@ LC4F8:  jmp     LC468
         phy
         pha
         bvc     LC50E
-        jsr     LC806
+        jsr     $C806
 LC50E:  bcc     LC516
-        jsr     LC908
+        jsr     $C908
         plx
         bra     LC51A
-LC516:  jsr     LC83B
+LC516:  jsr     $C83B
         pla
 LC51A:  ply
         plx
         jmp     LC5A8
 
         jsr     LC594
-        jsr     LC8C7
+        jsr     $C8C7
         jmp     LC5A8
 
         jsr     LC594
-        jsr     LC8CD
+        jsr     $C8CD           ; ???
         bra     LC5A8
+
         jsr     LC594
-        jsr     LC8D2
+        jsr     $C8D2
         bra     LC5A8
+
         jsr     LC594
-        jsr     LC8DA
+        jsr     $C8DA
         bra     LC5A8
+
         jsr     LC5A8
         ora     #$80
         jsr     LFDF0
         bra     LC594
+
         jsr     LC5A8
         ora     #$80
         jsr     LFDED
         bra     LC594
+
         jsr     LC5A8
         jsr     LC3F4
         bra     LC594
+
         jsr     LC5A8
         jsr     LC3FA
         and     #$7F
         bra     LC594
+
         jsr     LC5A8
         jsr     LFC9E
         bra     LC594
+
         jsr     LC5A8
         jsr     LFC58
         bra     LC594
+
         jsr     LC5A8
         jsr     LC300
         bra     LC594
+
         jsr     LC5A8
         jsr     LC4F8
         bra     LC594
+
         jsr     LC5A8
         jsr     LC7FD
         bra     LC594
+
         jsr     LC5A8
         jsr     LFC24
 LC594:  php
@@ -968,7 +980,7 @@ LC84C:  jsr     LC92A
 LC859:  lda     $067B
         and     #$7F
         cmp     #$20
-        bcc     LC88F
+        bcc     DoCtrlCharOut
         ldy     CH
         cpy     WNDWDTH
         bcc     LC86B
@@ -989,14 +1001,25 @@ LC86B:  lda     $067B
 LC888:  jsr     LCC13
         jmp     LCA71
 
-LC88E:  rts
+;;; ============================================================
 
-LC88F:  sec
+DoNothing:
+        rts
+
+;;; ============================================================
+;;; Output control character handling
+
+        ;; Input is char, < $20
+DoCtrlCharOut:
+        sec
         sbc     #$07
-        bcc     LC88E
+        bcc     DoNothing
         asl     a
         tax
         jmp     (LC899,x)
+
+        ;; Jump Table
+
 LC899:  .byte   $42
         dec     LCA59
         stx     $7BC8
@@ -1016,49 +1039,67 @@ LC8B6:  cmp     #$05
         wai
         tay
         dex
-        bbr1    $CA,LC847
+        bbr1    $CA,$C847
         dex
-        bbs0    $CA,LC8E8
+        bbs0    $CA,$C8E8
         dex
         adc     ($CA),y
         ror     $CE
 LC8C7:  asl     $CA,x
         adc     #$CA
+
+;;; ============================================================
+;;; GetLn handling
+;;; For Escape key sequences
+
 LC8CB:  pha
-        .byte   $A9
-LC8CD:  bra     LC8EB
-        .byte   $FB
-        tsb     $68
-LC8D2:  and     #$7F
-LC8D4:  cmp     #$61
+        lda     #M_ESC
+        trb     MODE
+        pla
+        and     #$7F
+        cmp     #$61
         bcc     LC8DE
         cmp     #$7B
-LC8DA:  bcs     LC8DE
+        bcs     LC8DE
         and     #$DF
+
 LC8DE:  ldx     #$00
-LC8E0:  ldy     LC8F3,x
-        beq     LC88E
-        cmp     LC8F3,x
-LC8E8:  beq     LC8ED
+LC8E0:  ldy     code_table,x
+        beq     DoNothing
+        cmp     code_table,x
+        beq     LC8ED
         inx
-LC8EB:  bra     LC8E0
+        bra     LC8E0
+
 LC8ED:  txa
         asl     a
         tax
         jmp     (LC906,x)
-LC8F3:  rti
 
-        eor     ($42,x)
-        .byte   $43
-        .byte   $44
-        eor     $46
-        eor     #$4A
-        .byte   $4B
-        eor     $0A0B
-LC900:  php
-        ora     $34,x
-        sec
-        ora     ($00),y
+code_table:
+        .byte   '@'             ; Escape @ - clear, home & exit mode
+        .byte   'A'             ; Escape A - right & exit mode
+        .byte   'B'             ; Escape B - left & exit mode
+        .byte   'C'             ; Escape C - down & exit mode
+        .byte   'D'             ; Escape D - up & exit mode
+        .byte   'E'             ; Escape E - clear EOL & exit mode
+        .byte   'F'             ; Escape F - clear EOS & exit mode
+        .byte   'I'             ; Escape I - up
+        .byte   'J'             ; Escape J - left
+        .byte   'K'             ; Escape K - right
+        .byte   'M'             ; Escape M - down
+        .byte   $0b             ; Escape up - up
+        .byte   $0a             ; Escape down - down
+        .byte   $08             ; Escape left - left
+        .byte   $15             ; Escape right - right
+        .byte   '4'             ; Escape 4 - 40 col mode
+        .byte   '8'             ; Escape 8 - 80 col mode
+        .byte   $11             ; Escape Ctrl+Q - deactivate
+
+        .byte   $00             ; sentinel
+
+
+
 LC906:  rts
 
         .byte   $CE
@@ -1081,7 +1122,11 @@ LC922:  smb5    $C9
         cmp     #$EB
         cmp     #$FE
         .byte   $C9
-LC92A:  lda     KBD
+
+;;; ============================================================
+
+LC92A:
+        lda     KBD
         cmp     #$93
         bne     LC940
         bit     KBDSTRB
@@ -1090,7 +1135,7 @@ LC934:  lda     KBD
         cmp     #$83
         beq     LC940
         .byte   $2C
-LC93E:  bpl     LC900
+LC93E:  bpl     $C900
 LC940:  rts
 
 LC941:  ldy     #$00
@@ -1755,29 +1800,43 @@ DoSETWND:
         LDXY    SETWND
         bra     ROMCall
 
+;;; ============================================================
+
 DoBell:
         LDXY    BELLB
         bra     ROMCall
+
+;;; ============================================================
 
 DoSETKBD:
         LDXY    SETKBD
         bra     ROMCall
 
+;;; ============================================================
+
 DoSETVID:
         LDXY    SETVID
         bra     ROMCall
+
+;;; ============================================================
 
 DoMON_VTAB:
         LDXY    MON_VTAB
         bra     ROMCall
 
+;;; ============================================================
+
 DoCLREOP:
         LDXY    CLREOP
         bra     ROMCall
 
+;;; ============================================================
+
 DoHOME:
         LDXY    HOME
         bra     ROMCall
+
+;;; ============================================================
 
 DoCLREOL:
         LDXY    CLREOL
@@ -1785,15 +1844,16 @@ DoCLREOL:
 
 ;;; ============================================================
 
+;;; A = character, X,Y = ROM address-1 (return value to push to stack)
 ROMCall:
         sta     TEMP2
         bit     RDLCRAM
         php
         bit     RDLCBNK2
         php
-        lda     #$CE
+        lda     #.hibyte(LCE84-1)
         pha
-        lda     #$83
+        lda     #.lobyte(LCE84-1)
         pha
         phx
         phy
@@ -1801,21 +1861,27 @@ ROMCall:
         lda     TEMP2
         rts
 
-        plp
+;;; ============================================================
+
+;;; Return from ROMCall
+LCE84:  plp
         bpl     LCE9A
         plp
         bpl     LCE92
         bit     LCBANK2
         bit     LCBANK2
         bra     LCEAB
+
 LCE92:  bit     ROMIN
         bit     ROMIN
         bra     LCEAB
+
 LCE9A:  plp
         bpl     LCEA5
         bit     LCBANK1
         bit     LCBANK1
         bra     LCEAB
+
 LCEA5:  .byte   $2C
 LCEA6:  bit     #$C0
         bit     $C089
@@ -1853,6 +1919,10 @@ LCEDC:  bit     TXTPAGE1
 LCEE0:  bit     TXTPAGE2
         rts
 
+;;; ============================================================
+
+        ;; ???
+
         eor     $4E
         ora     $4109
         .byte   $53
@@ -1864,8 +1934,8 @@ LCEE0:  bit     TXTPAGE2
         ora     $5309
         .byte   $54
         eor     ($09,x)
-        bbr4    $4E,LCF32
-        bmi     LCF4F
+        bbr4    $4E,$CF32
+        bmi     $CF4F
         .byte   $54
         ora     #$4D
         eor     ($4B,x)
@@ -1898,7 +1968,7 @@ LCF2B:  and     $312F,y
         and     $2F,x
         sec
         .byte   $36
-LCF32:  jsr     $4F46
+        jsr     $4F46
         eor     ($20)
         pha
         eor     ($42,x)

@@ -629,6 +629,8 @@ LC8D3:  lda     CHAR            ; char to be printed
 LC8F0:  jsr     LCBF9
         jmp     DoForwardSpace
 
+;;; ============================================================
+
 DoNothing:
         rts
 
@@ -1525,9 +1527,9 @@ ROMCall:
         php
         bit     RDLCBNK2
         php
-        lda     #$CE
+        lda     #.hibyte(LCE87-1)
         pha
-        lda     #$86
+        lda     #.lobyte(LCE87-1)
         pha
         phx
         phy
@@ -1537,8 +1539,8 @@ ROMCall:
 
 ;;; ============================================================
 
-        ;; ???
-        plp
+;;; Return from ROMCall
+LCE87:  plp
         bpl     LCE9D
         plp
         bpl     LCE95
