@@ -670,7 +670,7 @@ jt1:
         .addr   DoEnableMouseText ; $1B Ctrl-[ Enable MouseText
         .addr   DoForwardSpace  ; $1C Ctrl-\ Forward space
         .addr   DoClearEOL      ; $1D Ctrl-] Clear EOL
-        .addr   LC9F8           ; $1E Ctrl-^ ???
+        .addr   DoCtrlCaret     ; $1E Ctrl-^ ???
         .addr   DoUp            ; $1F Ctrl-_ Up
 
 ;;; ============================================================
@@ -823,7 +823,8 @@ DoQuit:
 ;;; ============================================================
 ;;; Adusting MODE Bits
 
-LC9F8:  lda     #$FC            ; clear mode bits %xxxxxx00
+DoCtrlCaret:
+        lda     #$FC            ; clear mode bits %xxxxxx00
         jsr     PreserveModeBits
         lda     #$32            ; set mode bits   %xx11xx1x
         bra     SetModeBits

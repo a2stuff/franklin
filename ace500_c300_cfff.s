@@ -1044,7 +1044,7 @@ jt1:
         .addr   DoEnableMouseText ; $1B Ctrl-[ Enable MouseText
         .addr   DoForwardSpace  ; $1C Ctrl-\ Forward space
         .addr   DoClearEOL      ; $1D Ctrl-] Clear EOL
-        .addr   XC9F8           ; $1E Ctrl-^ ???
+        .addr   DoCtrlCaret     ; $1E Ctrl-^ ???
         .addr   DoUp            ; $1F Ctrl-_ Up
 
 ;;; ============================================================
@@ -1269,7 +1269,7 @@ DoQuit:
 
 ;;; ============================================================
 
-XC9F8:
+DoCtrlCaret:
         lda     #$FC
         jsr     LCA21
         lda     #$32
