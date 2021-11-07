@@ -174,7 +174,7 @@ LC354:  php
         sta     $0200,x
 LC371:  jsr     LC96F
         cmp     #$9B
-        beq     LC3AE
+        beq     EscapeMode
         cmp     #$8D
         bne     LC381
         pha
@@ -198,15 +198,22 @@ LC39D:  ldx     SAVEX
         ldy     SAVEY
         jmp     extra_LC5FA
 
-LC3AE:  lda     #$80
+;;; ============================================================
+;;; Escape Mode
+
+EscapeMode:
+        lda     #M_ESC
         tsb     MODE
         jsr     LC822
         jsr     LC8CB
         cmp     #$98
         beq     LC38A
         lda     MODE
-        bmi     LC3AE
+        bmi     EscapeMode
         bra     LC371
+
+;;; ============================================================
+
 LC3C4:  php
         sei
         pha
@@ -944,7 +951,7 @@ LC806:  lda     #$05
         lda     #$07
         sta     $36
         stx     $37
-LC814:  lda     #$30
+LC814:  lda     #$30            ; ???
         sta     MODE
         jsr     LCBD7
         jsr     LCE33
@@ -1123,16 +1130,18 @@ jt2:
 
 LC92A:
         lda     KBD
-        cmp     #$93
-        bne     LC940
+        cmp     #$93            ; Ctrl-S
+        bne     @l3
         bit     KBDSTRB
-LC934:  lda     KBD
-        bpl     LC934
-        cmp     #$83
-        beq     LC940
+@l1:    lda     KBD
+        bpl     @l1
+        cmp     #$83            ; Ctrl-C
+        beq     @l3
         .byte   $2C
-LC93E:  bpl     $C900
-LC940:  rts
+@l2:    bpl     $C900
+@l3:    rts
+
+;;; ============================================================
 
 LC941:  ldy     #$00
         ldx     #$00
@@ -1145,9 +1154,9 @@ LC945:  cpy     WNDWDTH
         bra     LC945
 LC953:  dey
         sty     CH
-        .byte   $8E
+        .byte   $8E             ; bad disasm
         sei
-LC958:  ora     $A9
+        ora     $A9
         .byte   $8D
 LC95B:  rts
 
@@ -1158,12 +1167,12 @@ Do40Col:
         php
         jsr     LCBD0
         jsr     LCAFA
-        .byte   $20
-LC967:  .byte   $33
-LC968:  .byte   $CE
-LC969:  plp
+        jsr     LCE33
+        plp
         bpl     LC95B
         jmp     LCC68
+
+;;; ============================================================
 
 LC96F:  jsr     LC822
         cmp     #$00
@@ -1181,10 +1190,12 @@ LC980:  iny
         jsr     LCEC8
         iny
         bra     LC980
+
 LC98F:  dey
 LC990:  lda     #$A0
         jsr     LCEC8
         bra     LC96F
+
 LC997:  ldy     WNDWDTH
         dey
         cpy     CH
@@ -1305,18 +1316,18 @@ LCA2F:  lda     CHAR
         dec     MODE
         lda     MODE
         and     #$03
-        bne     LCA54
+        bne     @l2
         pla
         cmp     #$18
-        bcs     LCA4A
+        bcs     @l1
         jsr     LCAA3
-LCA4A:  lda     $05F8
+@l1:    lda     $05F8
         cmp     WNDWDTH
         bcs     :+
         sta     CH
 :       rts
 
-LCA54:  pla
+@l2:    pla
         sta     $05F8
         rts
 
@@ -1361,10 +1372,10 @@ DoReturn:
 DoLineFeed:
         lda     CV
         cmp     #$FF
-        beq     LCA85
+        beq     @l1
         cmp     #$17
         bcs     DoScrollUp
-LCA85:  inc     CV
+@l1:    inc     CV
         bra     LCAA5
 
 ;;; ============================================================
@@ -1399,45 +1410,46 @@ DoScrollUp:
         lda     CH
         pha
         jsr     DoHome
-LCAAE:  ldy     BASH
+@l1:    ldy     BASH
         sty     BAS2H
         ldy     BASL
         sty     BAS2L
         lda     WNDBTM
-        beq     LCAF0
+        beq     @l5
         dec     a
         cmp     CV
-        beq     LCAF0
-        bcc     LCAF0
+        beq     @l5
+        bcc     @l5
         inc     CV
         jsr     LCAA5
         ldy     WNDWDTH
         dey
         bit     RD80VID
-        bmi     LCAD7
-LCACE:  lda     (BASL),y
+        bmi     @l3
+@l2:    lda     (BASL),y
         sta     (BAS2L),y
         dey
-        bpl     LCACE
-        bra     LCAAE
-LCAD7:  tya
+        bpl     @l2
+        bra     @l1
+@l3:    tya
         lsr     a
         tay
-LCADA:  bit     TXTPAGE1
+@l4:    bit     TXTPAGE1
         lda     (BASL),y
         sta     (BAS2L),y
         bit     TXTPAGE2
         lda     (BASL),y
         sta     (BAS2L),y
         dey
-        bpl     LCADA
+        bpl     @l4
         bit     TXTPAGE1
-        bra     LCAAE
-LCAF0:  stz     CH
+        bra     @l1
+@l5:    stz     CH
         jsr     DoClearEOL
         plx
         lda     CV
         bra     LCAA1
+
 LCAFA:  lda     CV
         sta     $06F8
         lda     CH

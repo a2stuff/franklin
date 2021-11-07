@@ -862,18 +862,18 @@ LCA11:  lda     CHAR            ; character to read/print
         dec     MODE            ; clear low bit???
         lda     MODE
         and     #$03            ; test low 2 bits
-        bne     LCA36
+        bne     @l2
         pla
         cmp     #$18            ; +$20 is $38 = '8' ???
-        bcs     LCA2C
+        bcs     @l1
         jsr     LCA82
-LCA2C:  lda     $05F8
+@l1:    lda     $05F8
         cmp     WNDWDTH
         bcs     :+
         sta     CH
 :       rts
 
-LCA36:  pla
+@l2:    pla
         sta     $05F8
         rts
 
@@ -955,47 +955,49 @@ DoScrollUp:
         lda     CH
         pha
         jsr     DoHome
-LCA8D:  ldy     BASH
+@l1:    ldy     BASH
         sty     BAS2H
         ldy     BASL
         sty     BAS2L
         lda     WNDBTM
-        beq     LCACF
+        beq     @l5
         dec     a
         cmp     CV
-        beq     LCACF
-        bcc     LCACF
+        beq     @l5
+        bcc     @l5
         inc     CV
         jsr     LCA84
         ldy     WNDWDTH
         dey
         bit     RD80VID
-        bmi     LCAB6
-LCAAD:  lda     (BASL),y
+        bmi     @l3
+@l2:    lda     (BASL),y
         sta     (BAS2L),y
         dey
-        bpl     LCAAD
-        bra     LCA8D
+        bpl     @l2
+        bra     @l1
 
-LCAB6:  tya
+@l3:    tya
         lsr     a
         tay
-LCAB9:  bit     TXTPAGE1
+@l4:    bit     TXTPAGE1
         lda     (BASL),y
         sta     (BAS2L),y
         bit     TXTPAGE2
         lda     (BASL),y
         sta     (BAS2L),y
         dey
-        bpl     LCAB9
+        bpl     @l4
         bit     TXTPAGE1
-        bra     LCA8D
+        bra     @l1
 
-LCACF:  stz     CH
+@l5:    stz     CH
         jsr     DoClearEOL
         plx
         lda     CV
         jmp     LCA80
+
+;;; ============================================================
 
 LCADA:  lda     CV
         sta     $06F8
@@ -1025,7 +1027,7 @@ DoScroll:
         dec     a
         dec     a
         sta     $05F8
-LCAF6:  lda     $05F8
+@l1:    lda     $05F8
         jsr     LCA82
         lda     BASL
         sta     BAS2L
@@ -1036,28 +1038,28 @@ LCAF6:  lda     $05F8
         jsr     LCA82
         ldy     WNDWDTH
         dey
-LCB0E:  phy
+@l2:    phy
         bit     TXTPAGE1
         bit     RD80VID
-        bpl     LCB1F
+        bpl     @l3
         tya
         lsr     a
         tay
-        bcs     LCB1F
+        bcs     @l3
         bit     TXTPAGE2
-LCB1F:  lda     (BAS2L),y
+@l3:    lda     (BAS2L),y
         sta     (BASL),y
         ply
         dey
-        bpl     LCB0E
+        bpl     @l2
         bit     TXTPAGE1
         lda     $05F8
         cmp     WNDTOP
-        beq     LCB36
+        beq     @l4
         dec     $05F8
-        bra     LCAF6
+        bra     @l1
 
-LCB36:  lda     #$00
+@l4:    lda     #$00
         jsr     LCA82
         jsr     DoClearLine
         bit     TXTPAGE1
@@ -1105,16 +1107,16 @@ LCB7D:  stz     CH
 
 PascalStatus:
         cmp     #$00
-        beq     LCB8E
+        beq     @l1
         cmp     #$01
-        bne     LCB91
+        bne     @l2
         jsr     LCD09
         bra     LCB4A
 
-LCB8E:  sec
+@l1:    sec
         bra     LCB4A
 
-LCB91:  ldx     #$03
+@l2:    ldx     #$03
         clc
         rts
 
