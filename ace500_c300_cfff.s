@@ -19,6 +19,10 @@ BASH    := $29
 BAS2L   := $2A
 BAS2H   := $2B
 INVFLG  := $32
+CSWL    := $36
+CSWH    := $37
+KSWL    := $38
+KSWH    := $39
 A1L     := $3C
 A1H     := $3D
 A2L     := $3E
@@ -116,46 +120,76 @@ CLREOL  := $FC9C
 
 ;;; ============================================================
 
-        .org $C300
+        .org    $C300
 
-LC300:  bit     LC3D4
-        bra     LC341
-        sec
-        bcc     LC320
+        ;; Init
+LC300:  bit     SETV            ; V = init
+        bra     MainEntry
+
+        ;; Input
+        .assert * = C3KeyIn, error, "Entry point mismatch"
+LC305:  sec
+        .byte   OPC_BCC         ; never taken; skip next byte
+
+        ;; Output
+        .assert * = C3COut1, error, "Entry point mismatch"
+LC307:  clc
         clv
-        bra     LC341
-        ora     ($88,x)
-        inc     a
-        .byte   $23
-        .byte   $2B
-        .byte   $33
-        jmp     LC33B
+        bra     MainEntry
 
-        jsr     extra_LC5FA
+        ;; Signature bytes
+        .byte   $01, $88
+
+        ;; Pascal 1.1 Firmware Protocol Table
+        .byte   <JPINIT
+        .byte   <JPREAD
+        .byte   <JPWRITE
+        .byte   <JPSTAT
+
+        ;; AUXMOVE
+        .assert * = AUXMOVE, error, "Entry point mismatch"
+        jmp     JumpAuxMove
+
+        ;; XFER
+        .assert * = XFER, error, "Entry point mismatch"
+        jsr     extra_DoBankC5
         jmp     LCC03
 
-        jsr     LC3C4
-        jsr     LCB5D
-LC320:  jmp     extra_LC5FA
+;;; ============================================================
+;;; Pascal Entry Points
 
-        jsr     LC3C4
-        jsr     LCB6E
+
+JPINIT: jsr     ClearROM
+        jsr     PascalInit
+LC320:  jmp     extra_DoBankC5
+
+JPREAD: jsr     ClearROM
+        jsr     PascalRead
         bra     LC320
-        jsr     LC3C4
-        jsr     LCB79
+
+JPWRITE:jsr     ClearROM
+        jsr     PascalWrite
         bra     LC320
-        jsr     LC3C4
-        jsr     LCB9D
+
+JPSTAT: jsr     ClearROM
+        jsr     PascalStatus
         bra     LC320
-LC33B:  jsr     extra_LC5FA
+
+JumpAuxMove:
+        jsr     extra_DoBankC5
         jmp     LCC06
 
-LC341:  jsr     LC3C4
+;;; ============================================================
+;;; Main Entry Points
+
+MainEntry:
+        jsr     ClearROM
         sta     SAVEA
         stx     SAVEX
         sty     SAVEY
         pha
         bvc     LC354
+
         jsr     LC806
         clc
 LC354:  php
@@ -167,20 +201,21 @@ LC354:  php
         beq     LC371
         dex
         lda     $0678
-        cmp     #$88
+        cmp     #$88            ; left?
         beq     LC371
         cmp     $0200,x
         bne     LC38F
         sta     $0200,x
+
 LC371:  jsr     LC96F
-        cmp     #$9B
+        cmp     #$9B            ; escape?
         beq     EscapeMode
-        cmp     #$8D
+        cmp     #$8D            ; return?
         bne     LC381
         pha
         jsr     DoClearEOL
         pla
-LC381:  cmp     #$95
+LC381:  cmp     #$95            ; right?
         bne     LC38A
         ldy     CH
         jsr     LC9A8
@@ -196,7 +231,7 @@ LC39D:  ldx     SAVEX
         sty     OURCH
         sty     XCOORD
         ldy     SAVEY
-        jmp     extra_LC5FA
+        jmp     extra_DoBankC5
 
 ;;; ============================================================
 ;;; Escape Mode
@@ -214,16 +249,19 @@ EscapeMode:
 
 ;;; ============================================================
 
-LC3C4:  php
+ClearROM:
+        php
         sei
         pha
         sta     $C0BA           ; ???
-        sta     LCFFF
+        sta     CLRROM
         lda     #$C3
         sta     $07F8
         pla
         plp
-LC3D4:  rts
+SETV:   rts
+
+;;; ============================================================
 
         brk
         brk
@@ -232,7 +270,7 @@ LC3D4:  rts
         brk
         brk
         brk
-        jsr     extra_LC5FA
+        jsr     extra_DoBankC5
         jmp     LCC00
 
 LC3E2:  plx
@@ -240,16 +278,16 @@ LC3E2:  plx
         rti
 
         brk
-        jsr     LC3C4
+        jsr     ClearROM
         jmp     LCE0D
 
-        jsr     LC3C4
+        jsr     ClearROM
         jmp     LCDEC
 
-LC3F4:  jsr     LC3C4
+LC3F4:  jsr     ClearROM
         jmp     LCCB2
 
-LC3FA:  jsr     LC3C4
+LC3FA:  jsr     ClearROM
         jmp     LCCF5
 
 ;;; ============================================================
@@ -278,7 +316,7 @@ LFF4A           := $FF4A
         eor     $5953
         .byte   $2C
         .byte   $5F
-LC41C:  jsr     LC5FA
+LC41C:  jsr     DoBankC5
         .byte   $50
 LC420:  .byte   $03
         jsr     LC806
@@ -290,35 +328,35 @@ LC429:  jmp     LC825
         ldx     #$03
 LC42E:  rts
 
-        jsr     LC5FA
+        jsr     DoBankC5
         jmp     $C8D4
 
-        jsr     LC5FA
+        jsr     DoBankC5
         jmp     $C916
 
-        jsr     LC5FA
+        jsr     DoBankC5
         jmp     $C922
 
-        jsr     LC5FA
+        jsr     DoBankC5
         jmp     $C958
 
-        jsr     LC5FA
+        jsr     DoBankC5
         jmp     $C967
 
-        jsr     LC5FA
+        jsr     DoBankC5
         jmp     $C969
 
-        jsr     LC5FA
+        jsr     DoBankC5
         jmp     $C93E
 
-LC459:  jsr     LC5FA
+LC459:  jsr     DoBankC5
         jmp     $C8AC
 
         ldx     $C066
         ldy     $C067
         jmp     $C220
 
-LC468:  jsr     LC5FA
+LC468:  jsr     DoBankC5
         jmp     $C9A0
 
         brk
@@ -429,7 +467,7 @@ LC4F8:  jmp     LC468
         dec     $00,x
         jmp     LC459
 
-        jsr     LC594
+        jsr     BankC5
         sta     $067A
         phx
         phy
@@ -444,66 +482,72 @@ LC516:  jsr     $C83B
         pla
 LC51A:  ply
         plx
-        jmp     LC5A8
+        jmp     BankC8
 
-        jsr     LC594
+        jsr     BankC5
         jsr     $C8C7
-        jmp     LC5A8
+        jmp     BankC8
 
-        jsr     LC594
+        jsr     BankC5
         jsr     $C8CD           ; ???
-        bra     LC5A8
+        bra     BankC8
 
-        jsr     LC594
+        jsr     BankC5
         jsr     $C8D2
-        bra     LC5A8
+        bra     BankC8
 
-        jsr     LC594
+        jsr     BankC5
         jsr     $C8DA
-        bra     LC5A8
+        bra     BankC8
 
-        jsr     LC5A8
+        jsr     BankC8
         ora     #$80
         jsr     LFDF0
-        bra     LC594
+        bra     BankC5
 
-        jsr     LC5A8
+        jsr     BankC8
         ora     #$80
         jsr     LFDED
-        bra     LC594
+        bra     BankC5
 
-        jsr     LC5A8
+        jsr     BankC8
         jsr     LC3F4
-        bra     LC594
+        bra     BankC5
 
-        jsr     LC5A8
+        jsr     BankC8
         jsr     LC3FA
         and     #$7F
-        bra     LC594
+        bra     BankC5
 
-        jsr     LC5A8
+        jsr     BankC8
         jsr     LFC9E
-        bra     LC594
+        bra     BankC5
 
-        jsr     LC5A8
+        jsr     BankC8
         jsr     LFC58
-        bra     LC594
+        bra     BankC5
 
-        jsr     LC5A8
+        jsr     BankC8
         jsr     LC300
-        bra     LC594
+        bra     BankC5
 
-        jsr     LC5A8
+        jsr     BankC8
         jsr     LC4F8
-        bra     LC594
+        bra     BankC5
 
-        jsr     LC5A8
+        jsr     BankC8
         jsr     LC7FD
-        bra     LC594
+        bra     BankC5
 
-        jsr     LC5A8
+        jsr     BankC8
         jsr     LFC24
-LC594:  php
+        ;; Fall through
+
+;;; ============================================================
+
+;;; Hypothesis: This banks in a special "C5" C800-CFFF
+
+BankC5: php
         sei
         pha
         lda     #$C5
@@ -515,7 +559,11 @@ LC594:  php
         plp
         rts
 
-LC5A8:  php
+;;; ============================================================
+
+;;; Hypothesis: This banks in a special "C8" C800-CFFF
+
+BankC8: php
         sei
         pha
         lda     #$C8
@@ -526,14 +574,17 @@ LC5A8:  php
         plp
         rts
 
-        jsr     LC5A8
+;;; ============================================================
+
+        jsr     BankC8
 LC5BC:  bit     $C1C1
         bmi     LC5BC
         sta     $C090
-        bra     LC594
-LC5C6:  jsr     LC594
+        bra     BankC5
+
+LC5C6:  jsr     BankC5
         jsr     $C9A5
-        bra     LC5A8
+        bra     BankC8
         brk
         brk
         brk
@@ -577,7 +628,12 @@ LC5F5:  plx
         bit     LCFFF
         rti
 
-LC5FA:  jmp     LC5A8
+;;; ============================================================
+
+DoBankC5:
+        jmp     BankC8
+
+;;; ============================================================
 
         jmp     LC5C6
 
@@ -585,7 +641,7 @@ LC5FA:  jmp     LC5A8
         cpy     $00
         ldx     #$03
         asl     A1L
-        jsr     LC5FA
+        jsr     DoBankC5
         ldy     #$69
 LC60D:  lda     LCF26,y
         sta     $036C,y
@@ -684,7 +740,7 @@ LC62D:  dec     $27
         nop
         nop
 LC683:  pla
-LC684:  jsr     LC5FA
+LC684:  jsr     DoBankC5
         jsr     LCE00
         bra     LC6EA
         brk
@@ -932,7 +988,7 @@ LC7E5:  sta     WRCARDRAM
         brk
 LC7FD:  jmp     LC792
 .endscope
-extra_LC5FA := extra::LC5FA
+extra_DoBankC5 := extra::DoBankC5
 
 ;;; ============================================================
 
@@ -944,13 +1000,13 @@ LC800:  .byte   $C3
         eor     $AA,x
         jmp     $C4A0           ; bad disasm?
 
-LC806:  lda     #$05
-        sta     $38
-        ldx     #$C3
-        stx     $39
-        lda     #$07
-        sta     $36
-        stx     $37
+LC806:  lda     #<LC305
+        sta     KSWL
+        ldx     #>LC305
+        stx     KSWH
+        lda     #<LC307
+        sta     CSWL
+        stx     CSWH
 LC814:  lda     #$30            ; ???
         sta     MODE
         jsr     LCBD7
@@ -1505,7 +1561,10 @@ LCB4F:  lda     #$00
         bit     TXTPAGE1
         jmp     LCA9B
 
-LCB5D:  jsr     LC814
+;;; ============================================================
+
+PascalInit:
+        jsr     LC814
 LCB60:  jsr     LCBE1
 LCB63:  ldx     CH
         stx     OURCH
@@ -1513,11 +1572,18 @@ LCB63:  ldx     CH
         ldx     #$00
         rts
 
-LCB6E:  jsr     LCBB1
+;;; ============================================================
+
+PascalRead:
+        jsr     LCBB1
         jsr     LC822
         lda     CHAR
         bra     LCB63
-LCB79:  sta     CHAR
+
+;;; ============================================================
+
+PascalWrite:
+        sta     CHAR
         jsr     LCBB1
         jsr     LCBF8
         lda     CHAR
@@ -1527,22 +1593,28 @@ LCB79:  sta     CHAR
         cmp     #$15
         beq     LCB63
         cmp     #$0D
-        beq     LCB99
+        beq     @l1
         jsr     LC84C
         bra     LCB60
-LCB99:  stz     CH
+@l1:    stz     CH
         bra     LCB60
-LCB9D:  cmp     #$00
-        beq     LCBAA
+
+;;; ============================================================
+
+PascalStatus:
+        cmp     #$00
+        beq     @l1
         cmp     #$01
-        bne     LCBAD
+        bne     @l2
         jsr     LCCB8
         bra     LCB63
-LCBAA:  sec
+@l1:    sec
         bra     LCB63
-LCBAD:  ldx     #$03
+@l2:    ldx     #$03
         clc
         rts
+
+;;; ============================================================
 
 LCBB1:  pha
         lda     OLDBASL
@@ -1588,6 +1660,9 @@ LCC00:  .byte   $7B
 LCC03:  .byte   $0F
 LCC04:  .byte   $20
         .byte   $BB
+
+;;; ============================================================
+
 LCC06:  dec     $8049
         cmp     #$40
         bcc     LCC13
@@ -1671,7 +1746,7 @@ LCC8D:  bit     TXTPAGE2
         sta     CLR80COL
         bra     LCC64
 LCCB2:  jsr     LCCB8
-        jmp     extra::LC5FA           ; bad disasm or ...?
+        jmp     extra::DoBankC5           ; bad disasm or ...?
 
 LCCB8:  bit     $0579
         bmi     LCCD7
@@ -1704,7 +1779,7 @@ LCCE1:  phx
         beq     LCCDC
         bra     LCCD5
 LCCF5:  jsr     LCCFB
-        jmp     extra::LC5FA
+        jmp     extra::DoBankC5
 
 LCCFB:  bit     $0579
         bpl     LCD03
@@ -1850,7 +1925,7 @@ LCE00:  asl     $9D
         stz     $0579
 LCE0D:  jsr     LCDA8
         sta     $04F9
-        jmp     extra::LC5FA
+        jmp     extra::DoBankC5
 
 LCE16:  pha
         lda     RDRAMRD

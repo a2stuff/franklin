@@ -21,6 +21,10 @@ BASH    := $29
 BAS2L   := $2A
 BAS2H   := $2B
 INVFLG  := $32
+CSWL    := $36
+CSWH    := $37
+KSWL    := $38
+KSWH    := $39
 A1L     := $3C
 A1H     := $3D
 A2L     := $3E
@@ -121,7 +125,7 @@ CLREOL  := $FC9C
 
         ;; Init
 LC300:  bit     SETV            ; V = init
-        bra     LC33A
+        bra     MainEntry
 
         ;; Input
         .assert * = C3KeyIn, error, "Entry point mismatch"
@@ -132,7 +136,7 @@ LC305:  sec
         .assert * = C3COut1, error, "Entry point mismatch"
 LC307:  clc
         clv
-        bra     LC33A
+        bra     MainEntry
 
         ;; Signature bytes
         .byte   $01, $88
@@ -176,7 +180,8 @@ JumpAuxMove:
 ;;; ============================================================
 ;;; Main Entry Points
 
-LC33A:  sta     CLRROM
+MainEntry:
+        sta     CLRROM
         sta     SAVEA
         stx     SAVEX
         sty     SAVEY
@@ -184,12 +189,12 @@ LC33A:  sta     CLRROM
         bvc     LC35B
 
         lda     #<LC305
-        sta     $38
+        sta     KSWL
         ldx     #>LC305
-        stx     $39
-        lda     #$07
-        sta     $36
-        stx     $37
+        stx     KSWH
+        lda     #<LC307
+        sta     CSWL
+        stx     CSWH
         jsr     LC800
         clc
 LC35B:  php
