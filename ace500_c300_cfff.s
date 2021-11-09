@@ -1280,10 +1280,13 @@ LC9B4:  bit     RD80VID
         lsr     WNDWDTH
         asl     WNDWDTH
         sta     SET80COL
-LC9C0:  lda     CH
+
+        ;; This is CH fix described in source fragment below!
+LC9C0:  lda     CH              ; HAVE THEY CHANGED COL?
         cmp     XCOORD
-        bne     LC9CA
-        lda     OURCH
+        bne     LC9CA           ; YES - USE THEIRS
+        lda     OURCH           ; ELSE USE OURS (THEY MIGHT HAVE
+                                ; CHANGED THIS TOO)
 LC9CA:  sta     CH
 LC9CC:  rts
 

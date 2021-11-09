@@ -203,8 +203,12 @@ LC35B:  php
         lsr     WNDWDTH
         asl     WNDWDTH
         sta     SET80COL
+
+        ;; NOTE: In ACE 500 ROM, the below is patched to
+        ;; address the CH/OURCH issue.
         lda     OURCH
         sta     CH
+
 LC36D:  plp
         pla
         bcs     LC376
