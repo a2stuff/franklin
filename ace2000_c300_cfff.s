@@ -186,7 +186,7 @@ MainEntry:
         stx     SAVEX
         sty     SAVEY
         pha
-        bvc     LC35B
+        bvc     l1
 
         lda     #<LC305
         sta     KSWL
@@ -197,9 +197,9 @@ MainEntry:
         stx     CSWH
         jsr     LC800
         clc
-LC35B:  php
+l1:     php
         bit     RD80VID
-        bpl     LC36D
+        bpl     l2
         lsr     WNDWDTH
         asl     WNDWDTH
         sta     SET80COL
@@ -209,45 +209,45 @@ LC35B:  php
         lda     OURCH
         sta     CH
 
-LC36D:  plp
+l2:     plp
         pla
-        bcs     LC376
+        bcs     l3
         jsr     LC8B1
-        bra     LC3B7
+        bra     l9
 
-LC376:  ldx     SAVEX
-        beq     LC38B
+l3:     ldx     SAVEX
+        beq     l4
         dex
         lda     $0678
         cmp     #$88            ; left?
-        beq     LC38B
+        beq     l4
         cmp     $0200,x
-        bne     LC3AF
+        bne     l7
         sta     $0200,x
-LC38B:  jsr     LC877
+l4:     jsr     LC877
         cmp     #$9B            ; escape?
         beq     EscapeMode
         cmp     #$8D            ; return?
-        bne     LC39B
+        bne     l5
         pha
         jsr     DoClearEOL
         pla
-LC39B:  cmp     #$95            ; right?
-        bne     LC3AA
+l5:     cmp     #$95            ; right?
+        bne     l6
         jsr     LCEBE
         ora     #$80
         cmp     #$A0            ; non-control char
-        bcs     LC3AA
+        bcs     l6
         ora     #$40
-LC3AA:  sta     $0678
-        bra     LC3B5
+l6:     sta     $0678
+        bra     l8
 
-LC3AF:  jsr     LC850
+l7:     jsr     LC850
         stz     $0678
-LC3B5:  bra     LC3BA
+l8:     bra     l10
 
-LC3B7:  lda     SAVEA
-LC3BA:  ldx     SAVEX
+l9:     lda     SAVEA
+l10:    ldx     SAVEX
         ldy     CH
         sty     OURCH
         ldy     SAVEY
@@ -262,10 +262,10 @@ EscapeMode:
         jsr     LC850
         jsr     ProcessEscapeModeKey
         cmp     #$98            ; ctrl-x (clear)
-        beq     LC3AA
+        beq     l6
         lda     MODE            ; still in escape mode?
         bmi     EscapeMode
-        bra     LC38B
+        bra     l4
 
 ;;; ============================================================
 

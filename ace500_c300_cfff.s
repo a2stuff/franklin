@@ -189,45 +189,45 @@ MainEntry:
         stx     SAVEX
         sty     SAVEY
         pha
-        bvc     LC354
+        bvc     l1
 
         jsr     LC806
         clc
-LC354:  php
+l1:     php
         jsr     LC9B4
         plp
         pla
-        bcc     LC397
+        bcc     l7
         ldx     SAVEX
-        beq     LC371
+        beq     l2
         dex
         lda     $0678
         cmp     #$88            ; left?
-        beq     LC371
+        beq     l2
         cmp     $0200,x
-        bne     LC38F
+        bne     l5
         sta     $0200,x
 
-LC371:  jsr     LC96F
+l2:     jsr     LC96F
         cmp     #$9B            ; escape?
         beq     EscapeMode
         cmp     #$8D            ; return?
-        bne     LC381
+        bne     l3
         pha
         jsr     DoClearEOL
         pla
-LC381:  cmp     #$95            ; right?
-        bne     LC38A
+l3:     cmp     #$95            ; right?
+        bne     l4
         ldy     CH
         jsr     LC9A8
-LC38A:  sta     $0678
-        bra     LC395
-LC38F:  jsr     LC822
+l4:     sta     $0678
+        bra     l6
+l5:     jsr     LC822
         stz     $0678
-LC395:  bra     LC39D
-LC397:  jsr     LC849
+l6:     bra     l8
+l7:     jsr     LC849
         lda     SAVEA
-LC39D:  ldx     SAVEX
+l8:     ldx     SAVEX
         ldy     CH
         sty     OURCH
         sty     XCOORD
@@ -243,10 +243,10 @@ EscapeMode:
         jsr     LC822
         jsr     ProcessEscapeModeKey
         cmp     #$98
-        beq     LC38A
+        beq     l4
         lda     MODE
         bmi     EscapeMode
-        bra     LC371
+        bra     l2
 
 ;;; ============================================================
 
