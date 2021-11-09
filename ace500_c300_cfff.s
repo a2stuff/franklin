@@ -5,6 +5,7 @@
 
         .setcpu "65C02"
         .include "opcodes.inc"
+        .feature string_escapes
 
 ;;; Zero Page
 
@@ -274,7 +275,7 @@ SETV:   rts
         jmp     LCC00
 
 LC3E2:  plx
-        bit     LCFFF
+        bit     CLRROM
         rti
 
         brk
@@ -554,7 +555,7 @@ BankC5: php
         sta     $07F8
         sta     $C0BA
         sta     $C0B8
-        sta     LCFFF
+        sta     CLRROM
         pla
         plp
         rts
@@ -625,7 +626,7 @@ LC5C6:  jsr     BankC5
         brk
         brk
 LC5F5:  plx
-        bit     LCFFF
+        bit     CLRROM
         rti
 
 ;;; ============================================================
@@ -643,7 +644,7 @@ DoBankC5:
         asl     A1L
         jsr     DoBankC5
         ldy     #$69
-LC60D:  lda     LCF26,y
+LC60D:  lda     $CF26,y
         sta     $036C,y
         dey
         bpl     LC60D
@@ -2091,153 +2092,20 @@ LCED2:
 
         ;; ???
 
-        eor     $4E
-        ora     $4109
-        .byte   $53
-        jmp     $5709
-
-        eor     #$44
-        .byte   $54
-        pha
-        ora     $5309
-        .byte   $54
-        eor     ($09,x)
-        bbr4    $4E,$CF32
-        bmi     $CF4F
-        .byte   $54
-        ora     #$4D
-        eor     ($4B,x)
-        eor     $20
-        .byte   $53
-        eor     $52,x
-        eor     $20
-        sec
-        bmi     LCF2B
-        .byte   $53
-        .byte   $54
-        bbr4    $52,LCF55
-        jsr     $5349
-        jsr     $4E45
-        eor     ($42,x)
-        jmp     $4445
-
-        ora     $3B0D
-        .byte   $43
-        pha
-        eor     ($4E,x)
-        rmb4    $45
-        .byte   $44
-        .byte   $20
-LCF26:  .byte   $54
-        pha
-        eor     #$53
-        .byte   $20
-LCF2B:  and     $312F,y
-        and     $2F,x
-        sec
-        .byte   $36
-        jsr     $4F46
-        eor     ($20)
-        pha
-        eor     ($42,x)
-        eor     ($20,x)
-        eor     $5245
-        rmb4    $45
-        jsr     $4E41
-        .byte   $44
-        jsr     $4F4D
-        eor     $53,x
-        eor     $20
-        rmb5    $52
-        .byte   $49
-LCF4F:  .byte   $54
-        eor     $3A
-        ora     $460D
-LCF55:  eor     #$58
-        .byte   $43
-        bbr4    $4C,LCF64
-        jmp     $4144
-
-        ora     #$43
-        bbr4    $4C,LCF6C
-        pha
-LCF64:  eor     ($56,x)
-        eor     $20
-        .byte   $54
-        pha
-        eor     $59
-LCF6C:  jsr     $4843
-        eor     ($4E,x)
-        rmb4    $45
-        .byte   $44
-        jsr     $4F43
-        jmp     $3F20
-
-        ora     $4309
-        eor     $0950
-        bbr4    $4C,LCFC7
-        .byte   $43
-        bbr4    $4C,LCF94
-        ora     #$42
-        lsr     $0945
-        rol     $0932
-        eor     $5345,y
-        .byte   $20
-        .byte   $2D
-LCF94:  jsr     $5355
-        eor     $20
-        .byte   $54
-        pha
-        eor     $49
-        eor     ($53)
-        ora     $4C09
-        .byte   $44
-        eor     ($09,x)
-        eor     ($50,x)
-        bvc     LCFF5
-        eor     $43
-        bbr4    $4C,LCFB7
-        eor     $4C
-        .byte   $53
-        eor     $20
-        eor     $53,x
-        eor     $20
-LCFB7:  bbr4    $55,$D00C
-        .byte   $53
-        jsr     $5428
-        pha
-        eor     $59
-        jsr     $494D
-        rmb4    $48
-        .byte   $54
-LCFC7:  jsr     $4148
-        lsr     $45,x
-        ora     $093B
-        ora     #$09
-        jsr     $2020
-        .byte   $43
-        pha
-        eor     ($4E,x)
-        rmb4    $45
-        .byte   $44
-        jsr     $4854
-        eor     #$53
-        jsr     $4F54
-        bbr4    $29,LCFF3
-        rol     $0932
-        .byte   $53
-        .byte   $54
-        eor     ($09,x)
-        .byte   $43
-        bbr4    $4C,LCFFE
-        .byte   $0D
-        .byte   $2E
-LCFF3:  eor     $4E
-LCFF5:  .byte   $44
-        ora     #$52
-        .byte   $54
-        .byte   $53
-        ora     $1F0D
-        .byte   $0D
-LCFFE:  .byte   $3B
-LCFFF:  .byte   $45
+        .byte   "EN\r"
+        .byte   "\tASL\tWIDTH\r"
+        .byte   "\tSTA\tON80ST\tMAKE SURE 80 STORE IS ENABLED\r"
+        .byte   "\r"
+        .byte   ";CHANGED THIS 9/15/86 FOR HABA MERGE AND MOUSE WRITE:\r"
+        .byte   "\r"
+        .byte   "FIXCOL\tLDA\tCOL\tHAVE THEY CHANGED COL ?\r"
+        .byte   "\tCMP\tOLDCOL\r"
+        .byte   "\tBNE\t.2\tYES - USE THEIRS\r"
+        .byte   "\tLDA\tAPPLECOL\tELSE USE OURS (THEY MIGHT HAVE\r"
+        .byte   ";\t\t\t   CHANGED THIS TOO)\r"
+        .byte   ".2\tSTA\tCOL\r"
+        .byte   "\r"
+        .byte   ".END\tRTS\r"
+        .byte   "\r"
+        .byte   "\x1F"
+        .byte   "\r;E"
