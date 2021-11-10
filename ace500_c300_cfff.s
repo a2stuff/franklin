@@ -7,6 +7,10 @@
         .include "opcodes.inc"
         .feature string_escapes
 
+;;; Set to 1 to include preliminary fixes for:
+;;; * MouseText mode failing to exist on $18 output.
+INCLUDE_PATCHES = 0
+
 ;;; Zero Page
 
 WNDLFT  := $20
@@ -58,6 +62,7 @@ MODE    := $4FB
 M_ESC   = %10000000
 M_MOUSE = %01000000
 M_NORMAL= %00110000
+M_INACTIVE = $FF                ; When firmware is inactive
 
 OURCH   := $57B
 OURCV   := $5FB
@@ -154,7 +159,7 @@ LC307:  clc
         ;; XFER
         .assert * = XFER, error, "Entry point mismatch"
         jsr     extra_DoBankC5
-        jmp     LCC03
+        jmp     $CC03           ; ???
 
 ;;; ============================================================
 ;;; Pascal Entry Points
@@ -178,7 +183,7 @@ JPSTAT: jsr     ClearROM
 
 JumpAuxMove:
         jsr     extra_DoBankC5
-        jmp     LCC06
+        jmp     $CC06
 
 ;;; ============================================================
 ;;; Main Entry Points
@@ -272,7 +277,7 @@ SETV:   rts
         brk
         brk
         jsr     extra_DoBankC5
-        jmp     LCC00
+        jmp     $CC00
 
 LC3E2:  plx
         bit     CLRROM
@@ -322,7 +327,7 @@ LC41C:  jsr     DoBankC5
 LC420:  .byte   $03
         jsr     LC806
         bcc     LC429
-        jmp     LC838
+        jmp     $C838
 
 LC429:  jmp     LC825
 
@@ -1008,7 +1013,7 @@ LC806:  lda     #<LC305
         lda     #<LC307
         sta     CSWL
         stx     CSWH
-LC814:  lda     #$30            ; ???
+LC814:  lda     #M_NORMAL
         sta     MODE
         jsr     LCBD7
         jsr     LCE33
@@ -1023,15 +1028,15 @@ LC82B:  jsr     LCCB8
         jsr     LCCFB
         cmp     #$06
         bcc     LC840
-        .byte   $29
-LC838:  bbr7    $8D,$C8B6
-LC83B:  asl     $09
-        bra     $C7BF           ; bad disasm?
-        .byte   $03
+        and     #$7F
+        sta     CHAR
+        ora     #$80
+        bra     LC843
+
 LC840:  sta     CHAR
-        pha
+LC843:  pha
         jsr     LCBF8
-LC847:  pla
+        pla
         rts
 
 ;;; ============================================================
@@ -1210,10 +1215,8 @@ LC941:  ldy     #$00
         bra     @l1
 @l2:    dey
         sty     CH
-        .byte   $8E             ; bad disasm
-        sei
-        ora     $A9
-        .byte   $8D
+        stx     SAVEX
+        lda     #$8D            ; return
 LC95B:  rts
 
 ;;; ============================================================
@@ -1253,16 +1256,14 @@ LC96F:  jsr     LC822
         bra     LC96F
 
 @l4:    ldy     WNDWDTH
-        dey
+@l5:    dey
         cpy     CH
         beq     @l3
         dey
-        .byte   $20             ; bad disasm
-        tay
-        cmp     #$C8
-        .byte   $20
+        jsr     LC9A8
         iny
-        dec     $F180
+        jsr     LCEC8
+        bra     @l5
 
 ;;; ============================================================
 
@@ -1339,11 +1340,13 @@ DoQuit:
         jsr     Do40Col
         jsr     DoSETVID
         jsr     DoSETKBD
-        lda     #$17
-        ldx     #$00
+        lda     #23
+        ldx     #0
         jsr     LCAA1
-        lda     #$FF
+
+        lda     #M_INACTIVE
         sta     MODE
+
         lda     #$98
         rts
 
@@ -1351,19 +1354,25 @@ DoQuit:
 ;;; Adusting MODE Bits
 
 DoCtrlCaret:
-        lda     #$FC
+        lda     #$FC            ; clear mode bits %xxxxxx00
         jsr     PreserveModeBits
-        lda     #$32
+        lda     #$32            ; set mode bits   %xx11xx1x
         bra     SetModeBits
 
 DoDisableMouseText:
+.if !INCLUDE_PATCHES
         lda     #M_MOUSE            ; BUG! Should be ~M_MOUSE
+.else
+        lda     #.lobyte(~M_MOUSE)
+.endif
+
 PreserveModeBits:
         and     MODE
         bra     StoreMode
 
 DoEnableMouseText:
         lda     #M_MOUSE
+
 SetModeBits:
         ora     MODE
 StoreMode:
@@ -1646,7 +1655,7 @@ LCBD7:  sta     SET80COL
         rts
 
 LCBE1:  lda     MODE
-        cmp     #$FF
+        cmp     #M_INACTIVE
         beq     LCC04
         and     #$80
         beq     LCC04
@@ -1655,19 +1664,16 @@ LCBE1:  lda     MODE
         and     #$80
         eor     #$AB
         bra     LCC13
-LCBF8:  lda     MODE
-        and     #$80
-        beq     LCC04
-        .byte   $AD
-LCC00:  .byte   $7B
-        tsb     $80
-LCC03:  .byte   $0F
-LCC04:  .byte   $20
-        .byte   $BB
 
 ;;; ============================================================
 
-LCC06:  dec     $8049
+LCBF8:  lda     MODE
+        and     #M_ESC
+        beq     LCC04
+        lda     OLDCH
+        bra     LCC13
+LCC04:  jsr     LCEBB
+        eor     #$80
         cmp     #$40
         bcc     LCC13
         cmp     #$60
@@ -2112,3 +2118,11 @@ LCED2:
         .byte   "\r"
         .byte   "\x1F"
         .byte   "\r;E"
+
+;;; ============================================================
+
+        .res    $D000 - *, 0
+
+;;; ============================================================
+
+        .assert * = $D000, error, "Length changed"

@@ -8,6 +8,11 @@
         .include "opcodes.inc"
         .feature string_escapes
 
+;;; Set to 1 to include preliminary fixes for:
+;;; * MouseText mode failing to exist on $18 output.
+;;; * CH not working to set horizontal cursor position.
+INCLUDE_PATCHES = 0
+
 ;;; Zero Page
 
 WNDLFT  := $20
@@ -57,6 +62,7 @@ MODE    := $4FB
 M_ESC   = %10000000
 M_MOUSE = %01000000
 M_NORMAL= %00110000
+M_INACTIVE = $FF                ; When firmware is inactive
 
 OURCH   := $57B
 OURCV   := $5FB
@@ -206,7 +212,11 @@ l1:     php
 
         ;; NOTE: In ACE 500 ROM, the below is patched to
         ;; address the CH/OURCH issue.
+.if !INCLUDE_PATCHES
         lda     OURCH
+.else
+        jsr     Patch1
+.endif
         sta     CH
 
 l2:     plp
@@ -249,7 +259,11 @@ l8:     bra     l10
 l9:     lda     SAVEA
 l10:    ldx     SAVEX
         ldy     CH
+.if !INCLUDE_PATCHES
         sty     OURCH
+.else
+        jsr     Patch2
+.endif
         ldy     SAVEY
 SETV:   rts                     ; has V flag set
 
@@ -269,6 +283,7 @@ EscapeMode:
 
 ;;; ============================================================
 
+        .assert * = $C3DC, error, "Potential entry point moved"
         ;; ???
         bit     CLRROM
         jmp     LCEE7
@@ -284,6 +299,7 @@ EscapeMode:
 
 ;;; ============================================================
 
+        .assert * = $C3E8, error, "Potential entry point moved"
         ;; ???
         bit     CLRROM
         jmp     LCE18
@@ -615,7 +631,7 @@ LC877:  jsr     LC850
 LC8B1:  sta     CHAR
 LC8B4:  jsr     CheckPauseListing
         lda     MODE
-        and     #$03            ; test low 3 bits
+        and     #$03            ; test low 2 bits
         beq     @l1
         jmp     LCA11
 
@@ -832,7 +848,7 @@ DoQuit:
         ldx     #0
         jsr     LCA80
 
-        lda     #$FF
+        lda     #M_INACTIVE
         sta     MODE            ; set all mode bits (???)
 
         lda     #$98
@@ -848,7 +864,12 @@ DoCtrlCaret:
         bra     SetModeBits
 
 DoDisableMouseText:
-        lda     #M_MOUSE        ; clear bit BUG: Should be ~M_MOUSE
+.if !INCLUDE_PATCHES
+        lda     #M_MOUSE            ; BUG! Should be ~M_MOUSE
+.else
+        lda     #.lobyte(~M_MOUSE)
+.endif
+
 PreserveModeBits:
         and     MODE
         bra     StoreMode
@@ -1081,7 +1102,11 @@ PascalInit:
         jsr     LC800
 LCB47:  jsr     LCBC7
 LCB4A:  ldx     CH
+.if !INCLUDE_PATCHES
         stx     OURCH
+.else
+        jsr     Patch3
+.endif
         ldx     #$00
         rts
 
@@ -1160,7 +1185,7 @@ LCBBD:  sta     SET80COL
         rts
 
 LCBC7:  lda     MODE            ; all mode bits set?
-        cmp     #$FF
+        cmp     #M_INACTIVE
         beq     LCBEA
         and     #M_ESC          ; escape mode?
         beq     LCBEA
@@ -1752,4 +1777,31 @@ LCFE4:  jmp     LCF67
 
 ;;; ============================================================
 
+.if INCLUDE_PATCHES
+
+Patch1:
+        lda     CH
+        cmp     XCOORD
+        bne     :+
+        lda     OURCH
+:       rts
+
+Patch2:
+        sty     OURCH
+        sty     XCOORD
+        rts
+
+Patch3:
+        stx     OURCH
+        stx     XCOORD
+        rts
+
+.endif
+
+;;; ============================================================
+
         .res    $D000 - *, 0
+
+;;; ============================================================
+
+        .assert * = $D000, error, "Length changed"
