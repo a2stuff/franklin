@@ -49,6 +49,9 @@ SAVEA   := $4F8
 SAVEX   := $578
 SAVEY   := $478
 
+SAVECV  := $6F8
+SAVECH  := $778
+
 OLDCH   := $47B
 MODE    := $4FB
         ;; Bit 7 = Escape Mode
@@ -286,7 +289,7 @@ EscapeMode:
         .assert * = $C3DC, error, "Potential entry point moved"
         ;; ???
         bit     CLRROM
-        jmp     LCEE7
+        jmp     UnknownEP1
 
 ;;; ============================================================
 
@@ -302,16 +305,16 @@ EscapeMode:
         .assert * = $C3E8, error, "Potential entry point moved"
         ;; ???
         bit     CLRROM
-        jmp     LCE18
+        jmp     UnknownEP2
 
         bit     CLRROM
-        jmp     LCDF7
+        jmp     UnknownEP3
 
         bit     CLRROM
-        jmp     LCD09
+        jmp     UnknownEP4
 
         bit     CLRROM
-        jmp     LCD35
+        jmp     UnknownEP5
 
 ;;; ==================================================
 
@@ -545,12 +548,14 @@ Do40Col:
         bit     RD80VID
         php
         jsr     LCBB6
-        jsr     LCADA
+        jsr     SaveCHCV
         jsr     DoSETWND
         plp
         bpl     rts1
         jmp     LCC4E
 
+;;; ============================================================
+
         nop
         nop
         nop
@@ -569,15 +574,18 @@ Do40Col:
         nop
         nop
 
+;;; ============================================================
+
+        ;; ???
         jsr     LCB95
 LC850:  jsr     LCBC7
 LC853:  inc     RNDL
         bne     :+
         inc     RNDH
 :
-        jsr     LCD09
+        jsr     UnknownEP4
         bcc     LC853
-        jsr     LCD35
+        jsr     UnknownEP5
         cmp     #$06
         bcc     LC86E
         and     #$7F
@@ -832,7 +840,7 @@ Do80Col:
         bit     RD80VID
         php
         jsr     LCBBD
-        jsr     LCADA
+        jsr     SaveCHCV
         jsr     DoSETWND
         plp
         bmi     rts4
@@ -846,7 +854,7 @@ DoQuit:
         jsr     DoSETKBD
         lda     #23
         ldx     #0
-        jsr     LCA80
+        jsr     SetCHCV
 
         lda     #M_INACTIVE
         sta     MODE            ; set all mode bits (???)
@@ -897,7 +905,7 @@ LCA11:  lda     CHAR            ; character to read/print
         pla
         cmp     #$18            ; +$20 is $38 = '8' ???
         bcs     @l1
-        jsr     LCA82
+        jsr     SetCV
 @l1:    lda     $05F8
         cmp     WNDWDTH
         bcs     :+
@@ -937,7 +945,7 @@ DoUp:
         lda     CV
         beq     rts5
         dec     CV
-        bra     LCA84
+        bra     JumpMON_VTAB
 
 ;;; ============================================================
 
@@ -952,14 +960,14 @@ DoLineFeed:
         cmp     #23
         bcs     DoScrollUp
         inc     CV
-        bra     LCA84
+        bra     JumpMON_VTAB
 
 ;;; ============================================================
 
 DoHome:
         lda     WNDTOP
         ldx     #$00
-        bra     LCA80
+        bra     SetCHCV
 
 ;;; ============================================================
 
@@ -974,11 +982,16 @@ DoClearLine:
 
 ;;; ============================================================
 
-LCA7A:  lda     $06F8
-        ldx     $0778
-LCA80:  stx     CH
-LCA82:  sta     CV
-LCA84:  jmp     DoMON_VTAB
+RestoreCHCV:
+        lda     SAVECV
+        ldx     SAVECH
+
+SetCHCV:
+        stx     CH
+SetCV:
+        sta     CV
+JumpMON_VTAB:
+        jmp     DoMON_VTAB
 
 ;;; ============================================================
 
@@ -997,7 +1010,7 @@ DoScrollUp:
         beq     @l5
         bcc     @l5
         inc     CV
-        jsr     LCA84
+        jsr     JumpMON_VTAB
         ldy     WNDWDTH
         dey
         bit     RD80VID
@@ -1026,14 +1039,15 @@ DoScrollUp:
         jsr     DoClearEOL
         plx
         lda     CV
-        jmp     LCA80
+        jmp     SetCHCV
 
 ;;; ============================================================
 
-LCADA:  lda     CV
-        sta     $06F8
+SaveCHCV:
+        lda     CV
+        sta     SAVECV
         lda     CH
-        sta     $0778
+        sta     SAVECH
         rts
 
 ;;; ============================================================
@@ -1053,20 +1067,20 @@ DoBell:
 ;;; ============================================================
 
 DoScroll:
-        jsr     LCADA
+        jsr     SaveCHCV
         lda     WNDBTM
         dec     a
         dec     a
         sta     $05F8
 @l1:    lda     $05F8
-        jsr     LCA82
+        jsr     SetCV
         lda     BASL
         sta     BAS2L
         lda     BASH
         sta     BAS2H
         lda     $05F8
         inc     a
-        jsr     LCA82
+        jsr     SetCV
         ldy     WNDWDTH
         dey
 @l2:    phy
@@ -1091,10 +1105,10 @@ DoScroll:
         bra     @l1
 
 @l4:    lda     #$00
-        jsr     LCA82
+        jsr     SetCV
         jsr     DoClearLine
         bit     TXTPAGE1
-        jmp     LCA7A
+        jmp     RestoreCHCV
 
 ;;; ============================================================
 
@@ -1145,7 +1159,7 @@ PascalStatus:
         beq     @l1
         cmp     #$01
         bne     @l2
-        jsr     LCD09
+        jsr     UnknownEP4
         bra     LCB4A
 
 @l1:    sec
@@ -1216,7 +1230,7 @@ LCBFE:  php
         lda     WNDTOP
         sta     $05F8
 LCC05:  lda     $05F8
-        jsr     LCA82
+        jsr     SetCV
         lda     BASL
         sta     BAS2L
         lda     BASH
@@ -1247,7 +1261,7 @@ LCC31:  bit     TXTPAGE2
         cmp     #24
         bcc     LCC05
 LCC4A:  plp
-        jmp     LCA7A
+        jmp     RestoreCHCV
 
 LCC4E:  php
         sei
@@ -1255,7 +1269,7 @@ LCC4E:  php
         lda     WNDTOP
         sta     $05F8
 LCC58:  lda     $05F8
-        jsr     LCA82
+        jsr     SetCV
         ldy     #$13
         bit     TXTPAGE1
 LCC63:  lda     (BASL),y
@@ -1349,7 +1363,8 @@ LCD06:  pla
 
 ;;; ============================================================
 
-LCD09:  bit     $0579
+UnknownEP4:
+        bit     $0579
         bmi     LCD17
 LCD0E:  bit     KBD
         bmi     LCD15
@@ -1374,7 +1389,8 @@ LCD21:  phx
         beq     LCD1C
         bra     LCD15
 
-LCD35:  bit     $0579
+UnknownEP5:
+        bit     $0579
         bmi     LCD90
         lda     KBD
         bit     KBDSTRB
@@ -1455,6 +1471,8 @@ LCDBB:  adc     $0200,x
         cmp     $04F9
         rts
 
+;;; ============================================================
+
 LCDC9:  phx
         phy
         jsr     LCE1F
@@ -1486,25 +1504,30 @@ LCDE2:  jsr     LCE2E
 
 ;;; ============================================================
 
-LCDF7:  sta     WRCARDRAM
+UnknownEP3:
+        sta     WRCARDRAM
         lda     #$00
         tax
-LCDFD:  sta     $0200,x
+@l1:    sta     $0200,x
         inx
         cpx     #$0C
-        bcc     LCDFD
-LCE05:  lda     LCDDF,x
+        bcc     @l1
+@l2:    lda     LCDDF,x
         cmp     #$FF
-        beq     LCE12
+        beq     @l3
         sta     $0200,x
         inx
-        bra     LCE05
+        bra     @l2
 
-LCE12:  sta     WRMAINRAM
+@l3:    sta     WRMAINRAM
         stz     $0579
-LCE18:  jsr     LCDB3
+
+UnknownEP2:
+        jsr     LCDB3
         sta     $04F9
         rts
+
+;;; ============================================================
 
 LCE1F:  pha
         lda     RDRAMRD
@@ -1517,9 +1540,9 @@ LCE1F:  pha
 LCE2E:  pha
         sta     RDMAINRAM
         lda     $07F8
-        bpl     LCE3A
+        bpl     @l1
         sta     RDCARDRAM
-LCE3A:  pla
+@l1:    pla
         rts
 
 ;;; ============================================================
@@ -1654,7 +1677,8 @@ LCED5:
 ;;; ============================================================
 ;;; AUXMOVE implementation (?)
 
-LCEE7:  bit     RD80COL
+UnknownEP1:
+        bit     RD80COL
         php
         sta     CLR80COL
         bit     RDRAMRD
