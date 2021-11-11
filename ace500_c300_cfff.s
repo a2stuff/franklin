@@ -9,6 +9,7 @@
 
 ;;; Set to 1 to include preliminary fixes for:
 ;;; * MouseText mode failing to exist on $18 output.
+;;; * MouseText displaying if $40-$5F sent to COUT.
 INCLUDE_PATCHES = 0
 
 ;;; Zero Page
@@ -1070,8 +1071,15 @@ LC84C:  jsr     CheckPauseListing
         ;; If MouseText is not active, make sure to map inverse
         ;; uppercase range to the control character range.
 
-@l2:    lda     CHAR            ; char to be printed
+@l2:
+.if !INCLUDE_PATCHES
+        lda     CHAR            ; char to be printed
         bit     INVFLG          ; inverse?
+.else
+        jsr     Patch4          ; sets N flag if inverse char
+        nop
+        nop
+.endif
         bmi     @l3             ; no, so not MT, just print it
 
         and     #$7F
@@ -2134,8 +2142,7 @@ LCED2:
 
 ;;; ============================================================
 
-        ;; ???
-
+.if !INCLUDE_PATCHES
         .byte   "EN\r"
         .byte   "\tASL\tWIDTH\r"
         .byte   "\tSTA\tON80ST\tMAKE SURE 80 STORE IS ENABLED\r"
@@ -2153,6 +2160,17 @@ LCED2:
         .byte   "\r"
         .byte   "\x1F"
         .byte   "\r;E"
+.else
+
+Patch4:
+        lda     CHAR            ; char to be printed
+        bit     INVFLG
+        bmi     :+              ; normal
+        and     #$7F            ; clear high bit
+:       and     #$FF            ; set N flag
+        rts
+
+.endif
 
 ;;; ============================================================
 

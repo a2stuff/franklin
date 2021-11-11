@@ -3,7 +3,6 @@
 ; Input file: Franklin_Ace2000_ROM_U2_P2_Rev6.bin
 ; Page:       1
 
-
         .setcpu "65C02"
         .include "opcodes.inc"
         .feature string_escapes
@@ -11,6 +10,7 @@
 ;;; Set to 1 to include preliminary fixes for:
 ;;; * MouseText mode failing to exist on $18 output.
 ;;; * CH not working to set horizontal cursor position.
+;;; * MouseText displaying if $40-$5F sent to COUT.
 INCLUDE_PATCHES = 0
 
 ;;; Zero Page
@@ -528,7 +528,7 @@ LC4CE:  bbr0    $F0,LC4AB
 
 ;;; ============================================================
 
-        .res $C800 - *, 0
+        .res    $C800 - *, 0
 
 ;;; ============================================================
 
@@ -566,6 +566,7 @@ Do40Col:
 
 ;;; ============================================================
 
+.if !INCLUDE_PATCHES
         nop
         nop
         nop
@@ -583,6 +584,19 @@ Do40Col:
         nop
         nop
         nop
+.else
+Patch4:
+        lda     CHAR            ; char to be printed
+        bit     INVFLG
+        bmi     :+              ; normal
+        and     #$7F            ; clear high bit
+:       and     #$FF            ; set N flag
+        rts
+.endif
+
+;;; ============================================================
+
+        .res    $C84D - *, 0
 
 ;;; ============================================================
 
@@ -666,16 +680,15 @@ LC8B4:  jsr     CheckPauseListing
         ;; If MouseText is not active, make sure to map inverse
         ;; uppercase range to the control character range.
 
-        ;; BUG: If a char in $00-$7F is passed to C3COut1 and
-        ;; not in inverse mode, the mapping will not occur. This
-        ;; does not happen with the Apple firmware, as the
-        ;; high bit is folded into the char based on INVFLAG,
-        ;; then the corresponding test is based only on the
-        ;; char's high bit. This affects Copy II Plus 8.4's
-        ;; Catalog / tree view.
-
-@l2:    lda     CHAR            ; char to be printed
+@l2:
+.if !INCLUDE_PATCHES
+        lda     CHAR            ; char to be printed
         bit     INVFLG          ; inverse?
+.else
+        jsr     Patch4          ; sets N flag if inverse char
+        nop
+        nop
+.endif
         bmi     @l3             ; no, so not MT, just print it
 
         and     #$7F
@@ -1855,6 +1868,10 @@ UnknownEP1:
         dex
         bne     :-
 @l15:   jmp     @l9
+
+;;; ============================================================
+
+        .assert * = $CFE7, error, "Something changed size"
 
 ;;; ============================================================
 
