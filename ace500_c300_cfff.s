@@ -1054,7 +1054,7 @@ OutputChar:
         sta     CHAR
 LC84C:  jsr     CheckPauseListing
         lda     MODE
-        and     #$03
+        and     #$03            ; test low 2 bits (why???)
         beq     @l1
         jmp     LCA2F
 
@@ -1066,19 +1066,31 @@ LC84C:  jsr     CheckPauseListing
         cpy     WNDWDTH
         bcc     @l2
         jsr     DoReturn
-@l2:    lda     CHAR
-        bit     INVFLG
-        bmi     @l3
+
+        ;; If MouseText is not active, make sure to map inverse
+        ;; uppercase range to the control character range.
+
+@l2:    lda     CHAR            ; char to be printed
+        bit     INVFLG          ; inverse?
+        bmi     @l3             ; no, so not MT, just print it
+
         and     #$7F
-        bit     MODE
-        bvs     @l3
-        bit     ALTCHARSET
-        bpl     @l3
-        cmp     #$40
-        bcc     @l3
-        cmp     #$60
-        bcs     @l3
+
+        bit     MODE            ; MT active? (bit 6 = M_MOUSE)
+        bvs     @l3             ; yes, so skip correction
+
+        bit     ALTCHARSET      ; also skip correction if
+        bpl     @l3             ; alt charset is disabled
+
+        ;; If within "@ABC...XYZ[\]^_" range, map to $00-$1F
+        ;; so it shows as inverse uppercase, not MouseText.
+        cmp     #'@'
+        bcc     :+
+        cmp     #'_'+1
+        bcs     :+
         and     #$1F
+:
+
 @l3:    jsr     LCC13
         jmp     DoForwardSpace
 
@@ -1692,11 +1704,16 @@ LCBF8:  lda     MODE
         bra     LCC13
 LCC04:  jsr     LCEBB
         eor     #$80
-        cmp     #$40
-        bcc     LCC13
-        cmp     #$60
-        bcs     LCC13
+
+        ;; If within "@ABC...XYZ[\]^_" range, map to $00-$1F
+        ;; so it shows as inverse uppercase, not MouseText.
+        cmp     #'@'
+        bcc     :+
+        cmp     #'_'+1
+        bcs     :+
         and     #$1F
+:
+
 LCC13:  ldy     CH
         jmp     LCEC8
 

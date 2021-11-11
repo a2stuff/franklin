@@ -227,9 +227,10 @@ l1:     php
 l2:     plp
         pla
         bcs     l3              ; input or output?
+
+        ;; Output
         jsr     OutputChar
         bra     l9
-
 
         ;; Input
 l3:     ldx     SAVEX
@@ -649,7 +650,7 @@ OutputChar:
         sta     CHAR
 LC8B4:  jsr     CheckPauseListing
         lda     MODE
-        and     #$03            ; test low 2 bits
+        and     #$03            ; test low 2 bits (why???)
         beq     @l1
         jmp     LCA11
 
@@ -661,19 +662,31 @@ LC8B4:  jsr     CheckPauseListing
         cpy     WNDWDTH
         bcc     @l2
         jsr     DoReturn
+
+        ;; If MouseText is not active, make sure to map inverse
+        ;; uppercase range to the control character range.
+
 @l2:    lda     CHAR            ; char to be printed
-        bit     INVFLG
-        bmi     @l3
+        bit     INVFLG          ; inverse?
+        bmi     @l3             ; no, so not MT, just print it
+
         and     #$7F
-        bit     MODE
-        bvs     @l3           ; test bit 6 (MouseText active)
-        bit     ALTCHARSET
-        bpl     @l3
-        cmp     #$40
-        bcc     @l3
-        cmp     #$60
-        bcs     @l3
+
+        bit     MODE            ; MT active? (bit 6 = M_MOUSE)
+        bvs     @l3             ; yes, so skip correction
+
+        bit     ALTCHARSET      ; also skip correction if
+        bpl     @l3             ; alt charset is disabled
+
+        ;; If within "@ABC...XYZ[\]^_" range, map to $00-$1F
+        ;; so it shows as inverse uppercase, not MouseText.
+        cmp     #'@'
+        bcc     :+
+        cmp     #'_'+1
+        bcs     :+
         and     #$1F
+:
+
 @l3:    jsr     LCBF9
         jmp     DoForwardSpace
 
@@ -1238,11 +1251,16 @@ LCBDE:  lda     MODE            ; test high bit
 
 LCBEA:  jsr     LCEBE
         eor     #$80
-        cmp     #$40
-        bcc     LCBF9
-        cmp     #$60
-        bcs     LCBF9
+
+        ;; If within "@ABC...XYZ[\]^_" range, map to $00-$1F
+        ;; so it shows as inverse uppercase, not MouseText.
+        cmp     #'@'
+        bcc     :+
+        cmp     #'_'+1
+        bcs     :+
         and     #$1F
+:
+
 LCBF9:  ldy     CH
         jmp     LCECB
 
