@@ -197,6 +197,7 @@ MainEntry:
         pha
         bvc     l1
 
+        ;; Init firmware
         lda     #<LC305
         sta     KSWL
         ldx     #>LC305
@@ -206,6 +207,7 @@ MainEntry:
         stx     CSWH
         jsr     LC800
         clc
+
 l1:     php
         bit     RD80VID
         bpl     l2
@@ -224,10 +226,12 @@ l1:     php
 
 l2:     plp
         pla
-        bcs     l3
-        jsr     LC8B1
+        bcs     l3              ; input or output?
+        jsr     OutputChar
         bra     l9
 
+
+        ;; Input
 l3:     ldx     SAVEX
         beq     l4
         dex
@@ -301,18 +305,23 @@ EscapeMode:
         brk
 
 ;;; ============================================================
+;;; Entry points called by Monitor ROM
 
-        .assert * = $C3E8, error, "Potential entry point moved"
-        ;; ???
+        .assert * = $C3E8, error, "Entry point moved"
+
+        ;; Called by U3 ROM ($F37A)
         bit     CLRROM
         jmp     UnknownEP2
 
+        ;; Called by U3 ROM ($F809)
         bit     CLRROM
         jmp     UnknownEP3
 
+        ;; Called by U3 ROM ($F9B7)
         bit     CLRROM
         jmp     UnknownEP4
 
+        ;; Called by U3 ROM ($FA9E)
         bit     CLRROM
         jmp     UnknownEP5
 
@@ -524,7 +533,7 @@ LC4CE:  bbr0    $F0,LC4AB
 
 LC800:  lda     #M_NORMAL
         sta     MODE
-        jsr     LCBBD
+        jsr     Enable80Col
         jsr     DoSETWND
         jmp     DoHomeAndClear
 
@@ -547,7 +556,7 @@ rts1:   rts
 Do40Col:
         bit     RD80VID
         php
-        jsr     LCBB6
+        jsr     Disable80Col
         jsr     SaveCHCV
         jsr     DoSETWND
         plp
@@ -577,7 +586,7 @@ Do40Col:
 ;;; ============================================================
 
         ;; ???
-        jsr     LCB95
+        jsr     InitTextWindow
 LC850:  jsr     LCBC7
 LC853:  inc     RNDL
         bne     :+
@@ -636,7 +645,8 @@ LC877:  jsr     LC850
 
 ;;; ============================================================
 
-LC8B1:  sta     CHAR
+OutputChar:
+        sta     CHAR
 LC8B4:  jsr     CheckPauseListing
         lda     MODE
         and     #$03            ; test low 2 bits
@@ -839,7 +849,7 @@ rts4:   rts
 Do80Col:
         bit     RD80VID
         php
-        jsr     LCBBD
+        jsr     Enable80Col
         jsr     SaveCHCV
         jsr     DoSETWND
         plp
@@ -859,7 +869,7 @@ DoQuit:
         lda     #M_INACTIVE
         sta     MODE            ; set all mode bits (???)
 
-        lda     #$98
+        lda     #$98            ; Ctrl-X ???
         rts
 
 ;;; ============================================================
@@ -1127,7 +1137,7 @@ LCB4A:  ldx     CH
 ;;; ============================================================
 
 PascalRead:
-        jsr     LCB95
+        jsr     InitTextWindow
         jsr     LC850
         lda     CHAR
         bra     LCB4A
@@ -1136,7 +1146,7 @@ PascalRead:
 
 PascalWrite:
         sta     CHAR
-LCB60:  jsr     LCB95
+LCB60:  jsr     InitTextWindow
         jsr     LCBDE
         lda     CHAR
         ora     #$80
@@ -1171,7 +1181,8 @@ PascalStatus:
 
 ;;; ============================================================
 
-LCB95:  pha
+InitTextWindow:
+        pha
         lda     OLDBASL
         sta     BASL
         lda     OLDBASH
@@ -1182,21 +1193,31 @@ LCB95:  pha
         sta     WNDWDTH
         lda     #24
         sta     WNDBTM
+.if !INCLUDE_PATCHES
         lda     OURCH
+.else
+        jsr     Patch1
+.endif
         sta     CH
         pla
         rts
 
+;;; ==================================================
+
         ;; ???
         sta     CLRALTCHAR
-LCBB6:  sta     CLR80COL
+Disable80Col:
+        sta     CLR80COL
         sta     CLR80VID
         rts
 
-LCBBD:  sta     SET80COL
+Enable80Col:
+        sta     SET80COL
         sta     SET80VID
         sta     SETALTCHAR
         rts
+
+;;; ============================================================
 
 LCBC7:  lda     MODE            ; all mode bits set?
         cmp     #M_INACTIVE
@@ -1362,92 +1383,96 @@ LCD06:  pla
         rts
 
 ;;; ============================================================
+;;; Unknown Monitor ROM Routine
 
 UnknownEP4:
         bit     $0579
-        bmi     LCD17
-LCD0E:  bit     KBD
-        bmi     LCD15
+        bmi     @l3
+@l1:    bit     KBD
+        bmi     @l2
         clc
         rts
 
-LCD15:  sec
+@l2:    sec
         rts
 
-LCD17:  jsr     LCDB3
-        beq     LCD21
-LCD1C:  stz     $0579
-        bra     LCD0E
+@l3:    jsr     LCDB3
+        beq     @l5
+@l4:    stz     $0579
+        bra     @l1
 
-LCD21:  phx
+@l5:    phx
         ldx     $0479
         jsr     LCE1F
         lda     $0200,x
         jsr     LCE2E
         plx
         cmp     #$00
-        beq     LCD1C
-        bra     LCD15
+        beq     @l4
+        bra     @l2
+
+;;; ============================================================
+;;; Unknown Monitor ROM Routine
 
 UnknownEP5:
         bit     $0579
-        bmi     LCD90
+        bmi     @l11
         lda     KBD
         bit     KBDSTRB
         bit     $C027           ; ???
-        bpl     LCD4C
-LCD45:  cmp     #$06
-        bcc     LCD4B
+        bpl     @l3
+@l1:    cmp     #$06
+        bcc     @l2
         ora     #$80
-LCD4B:  rts
+@l2:    rts
 
-LCD4C:  and     #$7F
+@l3:    and     #$7F
         cmp     #$01
-        bne     LCD56
+        bne     @l4
         lda     #$1A
-        bra     LCD45
+        bra     @l1
 
-LCD56:  cmp     #$03
-        bne     LCD5E
+@l4:    cmp     #$03
+        bne     @l5
         lda     #$0C
-        bra     LCD45
+        bra     @l1
 
-LCD5E:  cmp     #$04
-        bne     LCD66
+@l5:    cmp     #$04
+        bne     @l6
         lda     #$19
-        bra     LCD45
+        bra     @l1
 
-LCD66:  cmp     #$06
-        bne     LCD6E
+@l6:    cmp     #$06
+        bne     @l7
         lda     #$2C
-        bra     LCD7E
+        bra     @l9
 
-LCD6E:  cmp     #$1F
-        bne     LCD76
+@l7:    cmp     #$1F
+        bne     @l8
         lda     #$2D
-        bra     LCD7E
+        bra     @l9
 
-LCD76:  cmp     #$20            ; space?
-        bcc     LCD45
+@l8:    cmp     #$20            ; space?
+        bcc     @l1
         cmp     #$2C            ; comma?
-        bcs     LCD45
-LCD7E:  pha
+        bcs     @l1
+@l9:    pha
         jsr     LCDB3
-        beq     LCD87
+        beq     @l10
         pla
-        bra     LCD45
+        bra     @l1
 
-LCD87:  lda     #$FF
+@l10:   lda     #$FF
         sta     $0579
         pla
         jsr     LCDC9
-LCD90:  jsr     LCDB3
-        beq     LCD9C
-LCD95:  stz     $0579
+@l11:   jsr     LCDB3
+        beq     @l13
+@l12:   stz     $0579
         lda     #$A0
-        bra     LCD45
+        bra     @l1
 
-LCD9C:  phx
+@l13:   phx
         ldx     $0479
         jsr     LCE1F
         lda     $0200,x
@@ -1455,17 +1480,19 @@ LCD9C:  phx
         plx
         inc     $0479
         cmp     #$00
-        beq     LCD95
-        bra     LCD45
+        beq     @l12
+        bra     @l1
+
+;;; ============================================================
 
 LCDB3:  jsr     LCE1F
         lda     #$00
         phx
         tax
         clc
-LCDBB:  adc     $0200,x
+@l1:    adc     $0200,x
         inx
-        bne     LCDBB
+        bne     @l1
         plx
         jsr     LCE2E
         cmp     $04F9
@@ -1503,6 +1530,7 @@ LCDE2:  jsr     LCE2E
         .byte   $ff
 
 ;;; ============================================================
+;;; Unknown Monitor ROM Routine
 
 UnknownEP3:
         sta     WRCARDRAM
@@ -1521,6 +1549,9 @@ UnknownEP3:
 
 @l3:    sta     WRMAINRAM
         stz     $0579
+
+;;; ============================================================
+;;; Unknown Monitor ROM Routine
 
 UnknownEP2:
         jsr     LCDB3
@@ -1675,7 +1706,7 @@ LCED5:
         rts
 
 ;;; ============================================================
-;;; AUXMOVE implementation (?)
+;;; ???
 
 UnknownEP1:
         bit     RD80COL
@@ -1687,10 +1718,10 @@ UnknownEP1:
         php
         phx
         plx
-        beq     LCEFD
-        jmp     LCF83
+        beq     @l1
+        jmp     @l13
 
-LCEFD:  bcc     LCF35
+@l1:    bcc     @l5
         sta     RDMAINRAM
         sta     WRCARDRAM
         lda     A4L
@@ -1699,61 +1730,61 @@ LCEFD:  bcc     LCF35
         sta     A4L
         stx     A4H
         sta     ALTZPOFF
-LCF13:  lda     (A1L)
+@l2:    lda     (A1L)
         sta     ALTZPON
         sta     (A4L)
         inc     A4L
-        bne     LCF20
+        bne     @l3
         inc     A4H
-LCF20:  sta     ALTZPOFF
+@l3:    sta     ALTZPOFF
         lda     A1L
         cmp     A2L
         lda     A1H
         sbc     A2H
         inc     A1L
-        bne     LCF31
+        bne     @l4
         inc     A1H
-LCF31:  bcc     LCF13
-        bra     LCF67
+@l4:    bcc     @l2
+        bra     @l9
 
-LCF35:  sta     RDCARDRAM
+@l5:    sta     RDCARDRAM
         sta     WRMAINRAM
         lda     A1L
         ldx     A1H
         sta     ALTZPON
         sta     A1L
         stx     A1H
-LCF46:  sta     ALTZPON
+@l6:    sta     ALTZPON
         lda     (A1L)
         ldx     A1L
         ldy     A1H
         inc     A1L
-        bne     LCF55
+        bne     @l7
         inc     A1H
-LCF55:  sta     ALTZPOFF
+@l7:    sta     ALTZPOFF
         sta     (A4L)
         inc     A4L
-        bne     LCF60
+        bne     @l8
         inc     A4H
-LCF60:  cpx     A2L
+@l8:    cpx     A2L
         tya
         sbc     A2H
-        bcc     LCF46
-LCF67:  sta     ALTZPOFF
+        bcc     @l6
+@l9:    sta     ALTZPOFF
         sta     WRCARDRAM
         plp
-        bmi     LCF73
+        bmi     @l10
         sta     WRMAINRAM
-LCF73:  sta     RDCARDRAM
+@l10:   sta     RDCARDRAM
         plp
-        bmi     LCF7C
+        bmi     @l11
         sta     RDMAINRAM
-LCF7C:  plp
-        bpl     LCF82
+@l11:   plp
+        bpl     @l12
         sta     SET80COL
-LCF82:  rts
+@l12:   rts
 
-LCF83:  bcc     LCFB7
+@l13:   bcc     @l14
         sta     RDMAINRAM
         sta     WRCARDRAM
         lda     A4L
@@ -1775,9 +1806,9 @@ LCF83:  bcc     LCFB7
         sta     ALTZPOFF
         dex
         bne     :-
-        bra     LCFE4
+        bra     @l15
 
-LCFB7:  sta     RDCARDRAM
+@l14:   sta     RDCARDRAM
         sta     WRMAINRAM
         lda     A1L
         ldy     A1H
@@ -1797,7 +1828,7 @@ LCFB7:  sta     RDCARDRAM
         sta     ALTZPOFF
         dex
         bne     :-
-LCFE4:  jmp     LCF67
+@l15:   jmp     @l9
 
 ;;; ============================================================
 

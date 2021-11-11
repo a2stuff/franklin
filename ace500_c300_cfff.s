@@ -196,13 +196,17 @@ MainEntry:
         pha
         bvc     l1
 
+        ;; Init
         jsr     LC806
         clc
+
 l1:     php
         jsr     LC9B4
         plp
         pla
-        bcc     l7
+        bcc     l7              ; Input or output?
+
+        ;; Input
         ldx     SAVEX
         beq     l2
         dex
@@ -230,8 +234,11 @@ l4:     sta     $0678
 l5:     jsr     LC822
         stz     $0678
 l6:     bra     l8
-l7:     jsr     LC849
+
+        ;; Output
+l7:     jsr     OutputChar
         lda     SAVEA
+
 l8:     ldx     SAVEX
         ldy     CH
         sty     OURCH
@@ -1015,9 +1022,11 @@ LC806:  lda     #<LC305
         stx     CSWH
 LC814:  lda     #M_NORMAL
         sta     MODE
-        jsr     LCBD7
+        jsr     Enable80Col
         jsr     LCE33
         jmp     DoHomeAndClear
+
+;;; ============================================================
 
 LC822:  jsr     LCBE1
 LC825:  inc     RNDL
@@ -1041,7 +1050,8 @@ LC843:  pha
 
 ;;; ============================================================
 
-LC849:  sta     CHAR
+OutputChar:
+        sta     CHAR
 LC84C:  jsr     CheckPauseListing
         lda     MODE
         and     #$03
@@ -1224,7 +1234,7 @@ LC95B:  rts
 Do40Col:
         bit     RD80VID
         php
-        jsr     LCBD0
+        jsr     Disable80Col
         jsr     LCAFA
         jsr     LCE33
         plp
@@ -1327,7 +1337,7 @@ LC9EA:  rts
 Do80Col:
         bit     RD80VID
         php
-        jsr     LCBD7
+        jsr     Enable80Col
         jsr     LCAFA
         jsr     LCE33
         plp
@@ -1588,7 +1598,7 @@ LCB63:  ldx     CH
 ;;; ============================================================
 
 PascalRead:
-        jsr     LCBB1
+        jsr     InitTextWindow
         jsr     LC822
         lda     CHAR
         bra     LCB63
@@ -1597,7 +1607,7 @@ PascalRead:
 
 PascalWrite:
         sta     CHAR
-        jsr     LCBB1
+        jsr     InitTextWindow
         jsr     LCBF8
         lda     CHAR
         ora     #$80
@@ -1629,35 +1639,43 @@ PascalStatus:
 
 ;;; ============================================================
 
-LCBB1:  pha
+InitTextWindow:
+        pha
         lda     OLDBASL
         sta     BASL
         lda     OLDBASH
         sta     BASH
         stz     WNDTOP
         stz     WNDLFT
-        lda     #$50
+        lda     #80
         sta     WNDWDTH
-        lda     #$18
+        lda     #24
         sta     WNDBTM
         jsr     LC9C0
         pla
         rts
 
+;;; ============================================================
+
+        ;; ???
         sta     CLRALTCHAR
-LCBD0:  sta     CLR80COL
+Disable80Col:
+        sta     CLR80COL
         sta     CLR80VID
         rts
 
-LCBD7:  sta     SET80COL
+Enable80Col:
+        sta     SET80COL
         sta     SET80VID
         sta     SETALTCHAR
         rts
 
+;;; ============================================================
+
 LCBE1:  lda     MODE
         cmp     #M_INACTIVE
         beq     LCC04
-        and     #$80
+        and     #M_ESC
         beq     LCC04
         jsr     LCEBB
         sta     OLDCH
