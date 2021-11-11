@@ -666,6 +666,14 @@ LC8B4:  jsr     CheckPauseListing
         ;; If MouseText is not active, make sure to map inverse
         ;; uppercase range to the control character range.
 
+        ;; BUG: If a char in $00-$7F is passed to C3COut1 and
+        ;; not in inverse mode, the mapping will not occur. This
+        ;; does not happen with the Apple firmware, as the
+        ;; high bit is folded into the char based on INVFLAG,
+        ;; then the corresponding test is based only on the
+        ;; char's high bit. This affects Copy II Plus 8.4's
+        ;; Catalog / tree view.
+
 @l2:    lda     CHAR            ; char to be printed
         bit     INVFLG          ; inverse?
         bmi     @l3             ; no, so not MT, just print it
