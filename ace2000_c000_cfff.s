@@ -627,36 +627,46 @@ LFA52           := $FA52        ; Not an Apple II entry point
 LFC45           := $FC45        ; Not an Apple II entry point
 LFEEB           := $FEEB        ; Not an Apple II entry point
 
+        ;; Called from $F88C
+LC400:
         ldx     #$00
         eor     #$20
-        beq     LC419
+        beq     @l1
         and     #$9F
-        beq     LC41B
+        beq     @l3
         asl     a
         eor     #$12
-        beq     LC41A
+        beq     @l2
         and     #$1A
         eor     #$02
-        beq     LC41B
+        beq     @l3
         and     #$10
-        bne     LC41A
-LC419:  inx
-LC41A:  inx
-LC41B:  stx     $2F
+        bne     @l2
+@l1:    inx
+@l2:    inx
+@l3:    stx     $2F
         jmp     LF813
 
+;;; ============================================================
+
+        ;; Called from $F8C5
+LC420:
         lda     KBD
         eor     #$93
-        bne     LC439
+        bne     @l2
         lda     KBDSTRB
-LC42A:  jsr     LFA37
+@l1:    jsr     LFA37
         lda     KBD
-        bpl     LC42A
+        bpl     @l1
         eor     #$83
-        beq     LC439
+        beq     @l2
         sta     KBDSTRB
-LC439:  jmp     LF813
+@l2:    jmp     LF813
 
+;;; ============================================================
+
+        ;; Called from $F957
+LC43:
         lda     $2E
         eor     #$FF
         and     ($26),y
@@ -667,65 +677,82 @@ LC439:  jmp     LF813
         sta     ($26),y
         jmp     LF813
 
-LC44F:  ldx     #$3C
+;;; ============================================================
+
+        ;; Called from $FE4B
+LC44F:
+        ldx     #$3C
         jsr     LFC45
-        beq     LC463
-        jsr     LC469
+        beq     @l1
+        jsr     @l2
         jsr     LFA52
         ldx     #$42
         jsr     LFA52
         bra     LC44F
 
-LC463:  jsr     LC469
+@l1:    jsr     @l2
         jmp     LF813
 
-LC469:  lda     ($00,x)
+@l2:    lda     ($00,x)
         sta     ($06,x)
         rts
 
+;;; ============================================================
+
+        ;; Called from $FEAA
+LC46E:
         and     #$0F
         asl     a
         tax
-        lda     LC47E,x
+        lda     @l1,x
         pha
-        lda     LC47E+1,x
+        lda     @l1+1,x
         tax
         pla
         jmp     LF813
 
-        ;; Jump Table (target address-1)
-LC47E:  .byte   $F0
-        sbc     $C100,x
-        brk
-        .byte   $C2
-        brk
-        .byte   $C3
-        brk
-        cpy     $00
-        cmp     $00
-        dec     $00
-        smb4    $1B
-        sbc     a:$A9,x
+        ;; Jump Table (target address-1 ???)
+@l1:
+        .addr   $FDF0
+        .addr   $C100
+        .addr   $C200
+        .addr   $C300
+        .addr   $C400
+        .addr   $C500
+        .addr   $C600
+        .addr   $C700
+        .addr   $FD1B
+
+;;; ============================================================
+
+        ;; Called from $FFA7
+LC490:
+        lda     #$00
         stz     A2L
         stz     A2H
         stz     $2C
 
-LC498:  ora     A2L
+@l1:    ora     A2L
         sta     A2L
         lda     $0200,y
         iny
         jsr     LFEEB
-        bmi     LC4B2
+        bmi     @l4
         dec     $2C
         ldx     #$04
-LC4A9:  asl     A2L
-LC4AB:  rol     A2H
+@l2:    asl     A2L
+
+@l3:    rol     A2H
         dex
-        bne     LC4A9
-        bra     LC498
+        bne     @l2
+        bra     @l1
 
-LC4B2:  jmp     LF813
+@l4:    jmp     LF813
 
+;;; ============================================================
+
+        ;; Called from $F847
+lC4B5:
         lsr     a
         phx
         php
@@ -743,77 +770,72 @@ LC4B2:  jmp     LF813
 LC4CB:  jmp     LF813
 
         ;; Data table
-LC4CE:  bbr0    $F0,LC4AB
+LC4CE:  .byte   $0F, $F0
+
+;;; ============================================================
+
+        ;; Called from $F854
+LC4D0:
+        phx
         and     #$0F
         tax
-        lda     $C4DD,x
+        lda     @table,x
         sta     $30
         plx
         jmp     LF813
-        brk
-        ora     ($22),y
-        .byte   $33
-        .byte   $44
-        eor     $66,x
-        rmb7    $88
-        sta     $BBAA,y
-        cpy     $EEDD
-        .byte   $FF
+
+@table:
+        .byte   $00, $11, $22, $33, $44, $55, $66, $77
+        .byte   $88, $99, $AA, $BB, $CC, $DD, $EE, $FF
+
+;;; ============================================================
+
+        ;; Called from $FC00
+LC4ED:
         tya
-        ldy     $C4FD,x
-        beq     * + (8)
+@l1:    ldy     $C4FD,x
+        beq     @l2
         cmp     $C000,y
         inx
-        bra     $C4EE
-        tay
+        bra     @l1
+@l2:    tay
         jmp     LF813
-        eor     ($54)
-        lsr     $00,x
-        lsr     $50,x
-        .byte   $53
-        brk
-        .byte   $9B
-        trb     $88FA
-        ora     #$FA
-        tya
-        adc     ($FD,x)
-        sta     $21,x
-        plx
-        sta     $FA16
-        brk
-        sta     $FC3A
-        txa
-        adc     $FC
-        smb0    $E1
-        .byte   $FB
-        dey
-        .byte   $42
-        plx
-        brk
-        eor     #$F5
-        .byte   $FC
-        lsr     a
-        .byte   $5B
-        plx
-        .byte   $4B
-        sbc     $FB,x
-        eor     $FCBC
-        brk
-        sta     $FEBE
-        ldy     #$C9
-        inc     $AAAE,x
-        sbc     $47BA,x
-        sbc     $12BC,x
-        inc     $80C7,x
-        sed
-        dec     $FE8C
-        .byte   $82
-        bbs7    $DF,LC4CB
-        .byte   $02
-        cpx     #$99
-        smb7    $03
-        bcc     $C574
-        sbc     a:$00,x
+
+        ;; Display mode softswitch table
+@swtable:
+
+        .byte   $52, $54, $56, $00 ; Full-screen, Page1, LoRes
+        .byte   $56, $50, $53, $00 ; LoRes, Graphics, Split-screen
+
+        ;; Dispatch table for RTS dispatch?
+@table:
+        .byte   $9b, $1c, $fa   ; FA1D    ^[ aka <ESC>
+        .byte   $88, $09, $fa   ; FA0A    ^H aka <-
+        .byte   $98, $61, $fd   ; FD62    ^X
+        .byte   $95, $21, $fa   ; FA22    ^U aka ->
+        .byte   $8d, $16, $fa   ; FA17    ^M aka <RETURN>
+        .byte   $00
+        .byte   $8d, $3a, $fc   ; FC3B    ^M aka <RETURN>
+        .byte   $8a, $65, $fc   ; FC66    ^J aka “down”
+        .byte   $87, $e1, $fb   ; FBE2    ^G aka BELL
+        .byte   $88, $42, $fa   ; FA43    ^H aka <-
+        .byte   $00
+        .byte   $49, $f5, $fc   ; FCF6    I
+        .byte   $4a, $5b, $fa   ; FA5C    J
+        .byte   $4b, $f5, $fb   ; FBF5    K
+        .byte   $4d, $bc, $fc   ; FCBC    M
+        .byte   $00
+        .byte   $8d, $be, $fe   ; FEBF    ^M aka <RETURN>
+        .byte   $a0, $c9, $fe   ; FECA    Space
+        .byte   $ae, $aa, $fd   ; FDAB    .
+        .byte   $ba, $47, $fd   ; FD48    :
+        .byte   $bc, $12, $fe   ; FE13    <
+        .byte   $c7, $80, $f8   ; F881    G
+        .byte   $ce, $8c, $fe   ; FE8D    N
+        .byte   $82, $ff, $df   ; E000    ^B
+        .byte   $83, $02, $e0   ; E003    ^C
+        .byte   $99, $f7, $03   ; 03F8    ^Y
+        .byte   $90, $25, $fd   ; FD26    ^P
 .endscope
 
 ;;; ============================================================
