@@ -1,17 +1,26 @@
-; da65 V2.19 - Git 59c58acbe
-; Created:    2021-11-02 17:43:56
-; Input file: Franklin_Ace2000_ROM_U2_P2_Rev6.bin
-; Page:       1
+;;; ============================================================
+;;; Franklin ACE 2X00 ROM V6.0 Disassembly
+;;;
+;;; First $1000 bytes of U2 ROM (usually banked in $C000-$CFFF)
+;;;
+;;; Build with CC65's ca65 assembler
+;;; ============================================================
 
         .setcpu "65C02"
         .include "opcodes.inc"
         .feature string_escapes
 
-;;; Set to 1 to include preliminary fixes for:
+;;; ============================================================
+;;; Patches
+
+;;; Set to 1 to include fixes for:
 ;;; * MouseText mode failing to exist on $18 output.
 ;;; * CH not working to set horizontal cursor position.
 ;;; * MouseText displaying if $40-$5F sent to COUT.
 INCLUDE_PATCHES = 0
+
+;;; ============================================================
+;;; Equates
 
 ;;; Zero Page
 
@@ -130,7 +139,287 @@ CLREOL  := $FC9C
 
 ;;; ============================================================
 
-        .org    $C300
+        .org    $C000
+
+;;; ============================================================
+;;; Page $C0 - Unused (garbage data?)
+
+        .byte   $80
+        .byte   $2C
+        .byte   $80
+        .byte   $03
+        nop
+        pha
+        pla
+        pha
+        pla
+        clc
+        clv
+        pha
+        phx
+        phy
+        .byte   $8D
+        .byte   $79
+        .byte   $06
+        .byte   $8D
+        .byte   $FF
+        .byte   $CF
+        sta     $C079
+        .byte   $50
+        .byte   $0B
+        .byte   $A2
+        rmb0    $86
+        rol     $A2,x
+        .byte   $C1
+        stx     $37
+        jsr     $B000
+        jsr     $B02C
+        sta     $C078
+        ply
+        plx
+        pla
+        rts
+
+        bit     $C12D
+        bra     $C00B
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        bbs7    $FF,$C0D3
+        brk
+        bbs7    $FF,$C0D7
+        brk
+        bbs7    $FF,$C0DB
+        brk
+        bbs7    $FF,$C0DF
+        brk
+        bbs7    $FF,$C0E3
+        brk
+        bbs7    $FF,$C0E7
+        brk
+        bbs7    $FF,$C0EB
+        brk
+        bbs7    $FF,$C0EF
+        brk
+        bbs7    $FF,$C0F3
+        brk
+        bbs7    $FF,$C0F7
+        brk
+        bbs7    $FF,$C0FB
+        brk
+        bbs7    $FF,$C0FF
+        brk
+
+;;; ============================================================
+;;; Page $C1 - Parallel Port Firmware
+
+LC100:  lda     $24
+        pha
+        lda     $22
+        sta     $25
+        stz     $24
+        jsr     MON_VTAB
+LC10C:  jsr     $FA37           ; ???
+        ldy     $29
+        sty     $2B
+        ldy     $28
+        sty     $2A
+        lda     $23
+        beq     LC151
+        dec     a
+        cmp     $25
+        beq     LC151
+        bcc     LC151
+        inc     $25
+        jsr     MON_VTAB
+        ldy     $21
+        dey
+        bit     RD80VID
+LC12D:  bmi     LC138
+LC12F:  lda     ($28),y
+        sta     ($2A),y
+        dey
+        bpl     LC12F
+        bra     LC10C
+LC138:  tya
+        lsr     a
+        tay
+LC13B:  bit     TXTPAGE1
+        lda     ($28),y
+        sta     ($2A),y
+        bit     TXTPAGE2
+        lda     ($28),y
+        sta     ($2A),y
+        dey
+        bpl     LC13B
+        bit     TXTPAGE1
+        bra     LC10C
+LC151:  stz     $24
+        jsr     CLREOL
+        plx
+        stx     $24
+        jmp     MON_VTAB
+
+;;; ============================================================
+
+        .res $C300 - *, 0
+
+;;; ============================================================
+;;; Page $C3 - Enhanced 80 Column Firmware
 
         ;; Init
 LC300:  bit     SETV            ; V = init
@@ -327,6 +616,7 @@ EscapeMode:
         jmp     UnknownEP5
 
 ;;; ==================================================
+;;; Page $C4 - ???
 
         .assert * = $C400, error, "Mismatch"
 .scope
@@ -531,6 +821,7 @@ LC4CE:  bbr0    $F0,LC4AB
         .res    $C800 - *, 0
 
 ;;; ============================================================
+;;; Pages $C8-$CF - Enhanced 80 Column Firmware
 
 LC800:  lda     #M_NORMAL
         sta     MODE
