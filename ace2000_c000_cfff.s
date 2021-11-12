@@ -134,8 +134,12 @@ SETVID  := $FE93
 MON_VTAB:= $FC22
 CLREOP  := $FC42
 HOME    := $FC58
+LINEFEED:= $FC66
 CLREOL  := $FC9C
-
+CANCEL  := $FD62
+MON_INPRT := $FE8D
+REGZ    := $FEBF
+USR     := $FECA
 
 ;;; ============================================================
 
@@ -808,34 +812,39 @@ LC4ED:
         .byte   $56, $50, $53, $00 ; LoRes, Graphics, Split-screen
 
         ;; Dispatch table for RTS dispatch?
+
+.macro TABLE_ENTRY char, addr
+        .byte   char, .lobyte(addr-1), .hibyte(addr-1)
+.endmacro
+
 @table:
-        .byte   $9b, $1c, $fa   ; FA1D    ^[ aka <ESC>
-        .byte   $88, $09, $fa   ; FA0A    ^H aka <-
-        .byte   $98, $61, $fd   ; FD62    ^X
-        .byte   $95, $21, $fa   ; FA22    ^U aka ->
-        .byte   $8d, $16, $fa   ; FA17    ^M aka <RETURN>
+        TABLE_ENTRY $9b, $FA1D  ; ^[ aka <ESC>
+        TABLE_ENTRY $88, $FA0A  ; ^H aka <-
+        TABLE_ENTRY $98, CANCEL ; ^X
+        TABLE_ENTRY $95, $FA22  ; ^U aka ->
+        TABLE_ENTRY $8d, $FA17  ; ^M aka <RETURN>
         .byte   $00
-        .byte   $8d, $3a, $fc   ; FC3B    ^M aka <RETURN>
-        .byte   $8a, $65, $fc   ; FC66    ^J aka “down”
-        .byte   $87, $e1, $fb   ; FBE2    ^G aka BELL
-        .byte   $88, $42, $fa   ; FA43    ^H aka <-
+        TABLE_ENTRY $8d, $FC3B  ; ^M aka <RETURN>
+        TABLE_ENTRY $8a, LINEFEED ; ^J aka “down”
+        TABLE_ENTRY $87, BELLB  ; ^G aka BELL
+        TABLE_ENTRY $88, $FA43  ; ^H aka <-
         .byte   $00
-        .byte   $49, $f5, $fc   ; FCF6    I
-        .byte   $4a, $5b, $fa   ; FA5C    J
-        .byte   $4b, $f5, $fb   ; FBF5    K
-        .byte   $4d, $bc, $fc   ; FCBC    M
+        TABLE_ENTRY $49, $FCF6  ; I
+        TABLE_ENTRY $4a, $FA5C  ; J
+        TABLE_ENTRY $4b, $FBF6  ; K
+        TABLE_ENTRY $4d, $FCBD  ; M
         .byte   $00
-        .byte   $8d, $be, $fe   ; FEBF    ^M aka <RETURN>
-        .byte   $a0, $c9, $fe   ; FECA    Space
-        .byte   $ae, $aa, $fd   ; FDAB    .
-        .byte   $ba, $47, $fd   ; FD48    :
-        .byte   $bc, $12, $fe   ; FE13    <
-        .byte   $c7, $80, $f8   ; F881    G
-        .byte   $ce, $8c, $fe   ; FE8D    N
-        .byte   $82, $ff, $df   ; E000    ^B
-        .byte   $83, $02, $e0   ; E003    ^C
-        .byte   $99, $f7, $03   ; 03F8    ^Y
-        .byte   $90, $25, $fd   ; FD26    ^P
+        TABLE_ENTRY $8d, REGZ   ; ^M aka <RETURN>
+        TABLE_ENTRY $a0, USR    ; Space
+        TABLE_ENTRY $ae, $FDAB  ; .
+        TABLE_ENTRY $ba, $FD48  ; :
+        TABLE_ENTRY $bc, $FE13  ; <
+        TABLE_ENTRY $c7, $F881  ; G
+        TABLE_ENTRY $ce, MON_INPRT ; N
+        TABLE_ENTRY $82, $E000  ; ^B
+        TABLE_ENTRY $83, $E003  ; ^C
+        TABLE_ENTRY $99, $03F8  ; ^Y
+        TABLE_ENTRY $90, $FD26  ; ^P
 .endscope
 
 ;;; ============================================================
