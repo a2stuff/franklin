@@ -1,16 +1,25 @@
-; da65 V2.19 - Git 59c58acbe
-; Created:    2021-11-04 15:14:09
-; Input file: c300_cfff
-; Page:       1
+;;; ============================================================
+;;; Franklin ACE 2X00 ROM V6.0 Disassembly
+;;;
+;;; First $1000 bytes of U2 ROM (usually banked in $C000-$CFFF)
+;;;
+;;; Build with CC65's ca65 assembler
+;;; ============================================================
 
         .setcpu "65C02"
         .include "opcodes.inc"
         .feature string_escapes
 
+;;; ============================================================
+;;; Patches
+
 ;;; Set to 1 to include preliminary fixes for:
 ;;; * MouseText mode failing to exist on $18 output.
 ;;; * MouseText displaying if $40-$5F sent to COUT.
 INCLUDE_PATCHES = 0
+
+;;; ============================================================
+;;; Equates
 
 ;;; Zero Page
 
@@ -127,7 +136,549 @@ CLREOL  := $FC9C
 
 ;;; ============================================================
 
-        .org    $C300
+        .org    $C000
+
+;;; ============================================================
+;;; Page $C0 - Unused (garbage data?)
+
+LC000:  brk
+LC001:  brk
+LC002:  brk
+LC003:  brk
+LC004:  brk
+LC005:  brk
+        brk
+        brk
+LC008:  brk
+LC009:  brk
+        brk
+        brk
+LC00C:  brk
+LC00D:  brk
+LC00E:  brk
+LC00F:  brk
+LC010:  brk
+LC011:  brk
+LC012:  brk
+LC013:  brk
+LC014:  brk
+LC015:  brk
+LC016:  brk
+LC017:  brk
+LC018:  brk
+LC019:  brk
+LC01A:  brk
+        brk
+LC01C:  brk
+        brk
+LC01E:  brk
+LC01F:  brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+LC048:  brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+LC054:  brk
+LC055:  brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+LC063:  brk
+        brk
+        brk
+LC066:  brk
+LC067:  brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+LC070:  brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+LC080:  brk
+LC081:  brk
+LC082:  brk
+LC083:  brk
+        brk
+        brk
+        brk
+        brk
+        brk
+LC089:  brk
+        brk
+LC08B:  brk
+        brk
+        brk
+        brk
+        brk
+LC090:  brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+LC0A8:  brk
+LC0A9:  brk
+LC0AA:  brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+LC0B4:  brk
+        brk
+        brk
+        brk
+LC0B8:  brk
+LC0B9:  brk
+LC0BA:  brk
+LC0BB:  brk
+LC0BC:  brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+
+;;; ============================================================
+;;; Page $C1 - Parallel Port Firmware
+
+.scope pageC1
+
+LFDF0           := $FDF0
+
+        bra     LC111
+        bra     LC107
+        nop
+        sec
+        nop
+LC107:  clc
+        clv
+        bra     LC114
+        ora     ($31,x)
+        .byte   $2B
+        .byte   $33
+        rol     $3E,x
+LC111:  bit     LC135
+LC114:  jsr     LC1D6
+        pha
+        phx
+        phy
+        sta     $0679
+        bvc     LC122
+        jsr     $C806
+LC122:  jsr     $C83C
+        ply
+        plx
+        pla
+LC128:  jmp     $C5FA
+
+        jsr     LC1D6
+        jsr     $C897
+        bra     LC128
+        ldx     #$03
+LC135:  rts
+
+        jsr     LC1D6
+        jsr     $C89D
+        bra     LC128
+        jsr     LC1D6
+        jsr     $C8A5
+        bra     LC128
+LC146:  lda     #$00
+        bit     LC016
+        bpl     LC14F
+        ora     #$80
+LC14F:  bit     LC013
+        bpl     LC156
+        ora     #$40
+LC156:  bit     LC014
+        bpl     LC15D
+        ora     #$20
+LC15D:  bit     LC011
+        bpl     LC164
+        ora     #$10
+LC164:  bit     LC012
+        bpl     LC16B
+        ora     #$08
+LC16B:  bit     LC018
+        bpl     LC177
+        bit     LC01C
+        bpl     LC177
+        ora     #$04
+LC177:  rts
+
+LC178:  phx
+        asl     a
+        asl     a
+        bcc     LC180
+        sta     LC003
+LC180:  asl     a
+        bcc     LC186
+        sta     LC005
+LC186:  asl     a
+        bcc     LC193
+        asl     a
+        bcc     LC18F
+        ldx     #$03
+        .byte   $2C
+LC18F:  ldx     #$01
+        bra     LC19B
+LC193:  asl     a
+        bcc     LC199
+        ldx     #$0B
+        .byte   $2C
+LC199:  ldx     #$09
+LC19B:  bit     LC080,x
+        bit     LC080,x
+        asl     a
+        bcc     LC1A7
+        sta     LC055
+LC1A7:  plx
+        rts
+
+LC1A9:  bit     #$04
+        beq     LC1B0
+        sta     LC054
+LC1B0:  sta     LC002
+        sta     LC004
+        bit     LC081
+        rts
+
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+LC1C1:  brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        jsr     LC128
+        jsr     LFDF0
+LC1D6:  php
+        sei
+        pha
+        lda     #$C1
+        sta     $07F8
+        sta     LC0BA
+        sta     LC0B8
+        sta     CLRROM
+        pla
+        plp
+        rts
+
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+        brk
+LC1F2:  plx
+        bit     CLRROM
+        rti
+
+LC1F7:  jmp     LC146
+
+LC1FA:  jmp     LC178
+
+LC1FD:  jmp     LC1A9
+.endscope
+
+;;; ============================================================
+;;; Page $C2 - ???
+
+        bit     $C5A7
+        bra     LC211
+        sec
+        bcc     LC220
+        clv
+        bra     LC211
+        ora     ($31,x)
+        trb     $17
+        inc     a
+        .byte   $1D
+LC211:  jmp     $C500
+
+        jmp     $C51F
+
+        jmp     $C528
+
+        jmp     $C530
+
+        jmp     $C538
+
+LC220:  lda     $077C
+        and     #$F1
+        sta     $077C
+        sec
+        lda     LC019
+        bmi     LC258
+        sta     LC070
+        lda     #$08
+        tsb     $077C
+        clc
+        bit     $067C
+        bpl     LC24E
+        lda     #$20
+        tsb     $077C
+        lda     $07FC
+        and     #$02
+        beq     LC24E
+        tsb     $077C
+        stz     $067C
+LC24E:  bit     LC063
+        bmi     LC258
+        lda     #$04
+        tsb     $077C
+LC258:  lda     LC015
+        ora     LC017
+        bmi     LC263
+        jmp     LC2ED
+
+LC263:  sta     $067C
+        lda     LC015
+        sta     LC048
+        bpl     LC2AE
+        txa
+        bpl     LC28B
+        lda     $067D
+        cmp     $047C
+        bne     LC281
+        lda     $077D
+        cmp     $057C
+        beq     LC2EC
+LC281:  inc     $047C
+        bne     LC2EC
+        inc     $057C
+        bra     LC2EC
+LC28B:  lda     $047D
+        cmp     $047C
+        bne     LC29B
+        lda     $057D
+        cmp     $057C
+        beq     LC2EC
+LC29B:  sec
+        lda     $047C
+        sbc     #$01
+        sta     $047C
+        lda     $057C
+        sbc     #$00
+        sta     $057C
+        bra     LC2EC
+LC2AE:  tya
+        bmi     LC2CB
+        lda     $06FD
+        cmp     $04FC
+        bne     LC2C1
+        lda     $07FD
+        cmp     $05FC
+        beq     LC2EC
+LC2C1:  inc     $04FC
+        bne     LC2EC
+        inc     $05FC
+        bra     LC2EC
+LC2CB:  lda     $04FD
+        cmp     $04FC
+        bne     LC2DB
+        lda     $05FD
+        cmp     $05FC
+        beq     LC2EC
+LC2DB:  sec
+        lda     $04FC
+        sbc     #$01
+        sta     $04FC
+        lda     $05FC
+        sbc     #$00
+        sta     $05FC
+LC2EC:  clc
+LC2ED:  bcs     LC2F8
+        lda     $077C
+        and     $07FC
+        beq     LC2F8
+        sec
+LC2F8:  rts
+
+        ldx     $EB
+        lda     $0342,x
+        .byte   $8D
+        .byte   $12
+
+;;; ============================================================
+;;; Page $C3 - Enhanced 80 Column Firmware
 
         ;; Init
 LC300:  bit     SETV            ; V = init
@@ -305,6 +856,7 @@ LC3FA:  jsr     ClearROM
         jmp     LCCF5
 
 ;;; ============================================================
+;;; Pages $C4-C7 - ???
 
 .scope extra
 
@@ -481,7 +1033,7 @@ LC4F8:  jmp     LC468
         dec     $00,x
         jmp     LC459
 
-        jsr     BankC5
+LC500:  jsr     BankC5
         sta     $067A
         phx
         phy
@@ -1009,6 +1561,7 @@ extra_DoBankC5 := extra::DoBankC5
         .res $C800 - *, 0
 
 ;;; ============================================================
+;;; Pages $C8-$CF - Enhanced 80 Column Firmware
 
 LC800:  .byte   $C3
         eor     $AA,x
