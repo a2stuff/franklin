@@ -144,6 +144,7 @@ CLREOL  := $FC9C
 CLREOLZ := $FC9E
 COUT    := $FDED
 COUT1   := $FDF0
+MON_SAVE:= $FF4A
 
 ;;; ============================================================
 
@@ -163,14 +164,15 @@ LC100:  bra     LC111
 LC102:  bra     LC107
 
 LC104:  nop
-        sec
+        sec                     ; $Cn05 = $38 Pascal 1.1 sig
         nop
-LC107:  clc
+LC107:  clc                     ; $Cn07 = $18 Pascal 1.1 sig
         clv
         bra     LC114
 
         ;; Signature bytes
-        .byte   $01, $31
+        .byte   $01             ; Pascal 1.1 signature
+        .byte   $31             ; $31 = Super Serial Card (!)
 
         ;; Pascal 1.1 Firmware Protocol Table
         .byte   .lobyte(LC12B)
@@ -328,13 +330,14 @@ LC1FD:  jmp     LC1A9
         bit     $C5A7
         bra     LC211
 
-        sec
-        bcc     LC220
+        sec                     ; $Cn05 = $38 Pascal 1.1 sig
+        bcc     LC220           ; $Cn07 = $18 Pascal 1.1 sig
         clv
         bra     LC211
 
         ;; Signature bytes
-        .byte   $01, $31
+        .byte   $01             ; Pascal 1.1 signature
+        .byte   $31             ; $31 = Super Serial Card
 
         ;; Pascal 1.1 Firmware Protocol Table
         .byte   .lobyte(LC214)
@@ -458,17 +461,18 @@ LC300:  bit     SETV            ; V = init
 
         ;; Input
         .assert * = C3KeyIn, error, "Entry point mismatch"
-LC305:  sec
+LC305:  sec                     ; $Cn05 = $38 Pascal 1.1 sig
         .byte   OPC_BCC         ; never taken; skip next byte
 
         ;; Output
         .assert * = C3COut1, error, "Entry point mismatch"
-LC307:  clc
+LC307:  clc                     ; $Cn07 = $18 Pascal 1.1 sig
         clv
         bra     MainEntry
 
         ;; Signature bytes
-        .byte   $01, $88
+        .byte   $01             ; Pascal 1.1 signature
+        .byte   $88             ; $88 = 80 Column Card
 
         ;; Pascal 1.1 Firmware Protocol Table
         .byte   <JPINIT
@@ -628,7 +632,7 @@ LC3FA:  jsr     ClearROM
         jmp     LCCF5
 
 ;;; ============================================================
-;;; Page $C4 - ???
+;;; Page $C4 - Mouse Card
 
 .scope pageC4
 
@@ -640,7 +644,7 @@ LC3FA:  jsr     ClearROM
         bra     LC41C
 
         ;; Signature bytes
-        .byte   $01, $20
+        .byte   $01, $20        ; $20 = Mouse
 
         ;; Pascal 1.1 Firmware Protocol Table
         .byte   .lobyte(LC42C)
@@ -989,9 +993,10 @@ pageC5_LC5F5 := pageC5::LC5F5
 ;;; Page $C6 - Disk II Driver
 
 .scope pageC6
-        bit     $20
-        cpy     $00
-        ldx     #$03
+        bit     $20             ; $Cn01 = $20 ProDOS device sig
+        cpy     $00             ; $Cn03 = $00 ProDOS device sig
+        ldx     #$03            ; $Cn05 = $03 ProDOS device sig
+
         asl     A1L
         jsr     pageC5::DoBankC5
         ldy     #$69
@@ -1014,6 +1019,7 @@ LC62D:  dec     $27
         lda     $27
         cmp     #$08
         bne     LC62D
+
         nop
         nop
         nop
@@ -1095,6 +1101,7 @@ LC683:  pla
 LC684:  jsr     pageC5::DoBankC5
         jsr     LCE00
         bra     LC6EA
+
         brk
         brk
         brk
@@ -1208,8 +1215,6 @@ LC6EA:  nop
 LC700:
 .scope pageC7
 
-LFF4A           := $FF4A
-
 LC700:  jsr     $C1F7
         pha
         jsr     $C1FD
@@ -1260,7 +1265,7 @@ LC751:  pla
         ply
         plx
         plp
-        jsr     LFF4A
+        jsr     MON_SAVE
         pla
         sta     $3A
         ply
