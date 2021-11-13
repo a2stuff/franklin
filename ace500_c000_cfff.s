@@ -152,11 +152,13 @@ MON_SAVE:= $FF4A
 
 ;;; ============================================================
 ;;; Page $C0 - Unused (garbage data?)
+;;; ============================================================
 
         .res    $100, 0
 
 ;;; ============================================================
 ;;; Page $C1 - Parallel Port Firmware
+;;; ============================================================
 
 .scope pageC1
 
@@ -324,7 +326,8 @@ LC1FD:  jmp     LC1A9
 .endscope
 
 ;;; ============================================================
-;;; Page $C2 - ???
+;;; Page $C2 - Serial Port Firmware
+;;; ============================================================
 
 .scope pageC2
         bit     $C5A7
@@ -454,6 +457,7 @@ LC2F8:  rts
 
 ;;; ============================================================
 ;;; Page $C3 - Enhanced 80 Column Firmware
+;;; ============================================================
 
         ;; Init
 LC300:  bit     SETV            ; V = init
@@ -632,126 +636,99 @@ LC3FA:  jsr     ClearROM
         jmp     LCCF5
 
 ;;; ============================================================
-;;; Page $C4 - Mouse Card
+;;; Page $C4 - Mouse Card Firmware
+;;; ============================================================
 
 .scope pageC4
 
-        bit     LC42E
-        bra     LC41C
+        bit     SETV
+        bra     Init
+
         sec
-        bcc     LC420
+        .byte   OPC_BCC         ; never taken; skip next byte
+
+        clc
         clv
-        bra     LC41C
+        bra     Init
 
         ;; Signature bytes
         .byte   $01, $20        ; $20 = Mouse
 
         ;; Pascal 1.1 Firmware Protocol Table
-        .byte   .lobyte(LC42C)
-        .byte   .lobyte(LC42C)
-        .byte   .lobyte(LC42C)
-        .byte   .lobyte(LC42C)
+        .byte   .lobyte(PascalEP)
+        .byte   .lobyte(PascalEP)
+        .byte   .lobyte(PascalEP)
+        .byte   .lobyte(PascalEP)
 
-        .byte   0
-        .byte   $2F
-        and     $3B,x
-        eor     ($47,x)
-        eor     $5953
-        .byte   $2C
-        .byte   $5F
-LC41C:  jsr     pageC5_DoBankC5
-        .byte   $50
-LC420:  .byte   $03
-        jsr     LC806
-        bcc     LC429
+        .byte   $00             ; "optional routines follow"
+
+        ;; Mouse routine entry points
+        .byte   .lobyte(SetMouse)
+        .byte   .lobyte(ServeMouse)
+        .byte   .lobyte(ReadMouse)
+        .byte   .lobyte(ClearMouse)
+        .byte   .lobyte(PosMouse)
+        .byte   .lobyte(ClampMouse)
+        .byte   .lobyte(HomeMouse)
+        .byte   .lobyte(InitMouse)
+
+        ;; ???
+        .byte   .lobyte(PascalEP)
+        .byte   .lobyte(LC45F)
+
+Init:   jsr     pageC5_DoBankC5
+        bvc     @l1
+        jsr     $C806
+@l1:    bcc     @l2
         jmp     $C838
 
-LC429:  jmp     LC825
+@l2:    jmp     LC825
 
-LC42C:  ldx     #$03
-LC42E:  rts
+PascalEP:
+        ldx     #$03
+SETV:   rts
 
+SetMouse:
         jsr     pageC5_DoBankC5
         jmp     $C8D4
 
+ServeMouse:
         jsr     pageC5_DoBankC5
         jmp     $C916
 
+ReadMouse:
         jsr     pageC5_DoBankC5
         jmp     $C922
 
+ClearMouse:
         jsr     pageC5_DoBankC5
         jmp     $C958
 
+PosMouse:
         jsr     pageC5_DoBankC5
         jmp     $C967
 
+ClampMouse:
         jsr     pageC5_DoBankC5
         jmp     $C969
 
+HomeMouse:
         jsr     pageC5_DoBankC5
         jmp     $C93E
 
-LC459:  jsr     pageC5_DoBankC5
+InitMouse:
+        jsr     pageC5_DoBankC5
         jmp     $C8AC
 
-        ldx     $C066
+LC45F:  ldx     $C066           ; ???
         ldy     $C067
         jmp     $C220
 
 LC468:  jsr     pageC5_DoBankC5
         jmp     $C9A0
 
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
+        .res    $C4A0 - *, 0
+
 LC4A0:  cld
         phx
         phy
@@ -808,11 +785,12 @@ LC4EA:  jmp     pageC5_LC5F5
 LC4F8:  jmp     LC468
 
         dec     $00,x
-        jmp     LC459
+        jmp     InitMouse
 .endscope
 
 ;;; ============================================================
 ;;; Page $C5
+;;; ============================================================
 
 .scope pageC5
 
@@ -838,7 +816,7 @@ LC51A:  ply
         jmp     BankC8
 
         jsr     BankC5
-        jsr     $C8CD           ; ???
+        jsr     $C8CD
         bra     BankC8
 
         jsr     BankC5
@@ -934,45 +912,9 @@ LC5BC:  bit     $C1C1
 LC5C6:  jsr     BankC5
         jsr     $C9A5
         bra     BankC8
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
+
+        .res    $C5F5 - *, 0
+
 LC5F5:  plx
         bit     CLRROM
         rti
@@ -990,7 +932,8 @@ pageC5_DoBankC5 := pageC5::DoBankC5
 pageC5_LC5F5 := pageC5::LC5F5
 
 ;;; ============================================================
-;;; Page $C6 - Disk II Driver
+;;; Page $C6 - Disk II Firmware
+;;; ============================================================
 
 .scope pageC6
         bit     $20             ; $Cn01 = $20 ProDOS device sig
@@ -1020,114 +963,28 @@ LC62D:  dec     $27
         cmp     #$08
         bne     LC62D
 
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
+        .res    $C65C - *, ::OPC_NOP
+
         pha
+
         nop
         nop
         nop
         nop
         nop
         nop
+
         bra     LC683
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
+
+        .res    $C683 - *, ::OPC_NOP
+
 LC683:  pla
 LC684:  jsr     pageC5::DoBankC5
         jsr     LCE00
         bra     LC6EA
 
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
+
+        .res    $C6A6 - *, 0
 
         ldy     #$56            ; ???
         sty     A1L
@@ -1135,65 +992,8 @@ LC684:  jsr     pageC5::DoBankC5
         clv
         jmp     $CE51
 
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
-        nop
+        .res    $C6EA - *, ::OPC_NOP
+
 LC6EA:  nop
         lda     A1H
         inc     a
@@ -1211,6 +1011,7 @@ LC6EA:  nop
 
 ;;; ============================================================
 ;;; Page $C7 - ???
+;;; ============================================================
 
 LC700:
 .scope pageC7
@@ -1359,10 +1160,11 @@ pageC7_LC7FD := pageC7::LC7FD
 
 ;;; ============================================================
 
-        .res $C800 - *, 0
+        .res    $C800 - *, 0
 
 ;;; ============================================================
 ;;; Pages $C8-$CF - Enhanced 80 Column Firmware
+;;; ============================================================
 
 LC800:  .byte   $C3
         eor     $AA,x
