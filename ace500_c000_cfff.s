@@ -314,6 +314,7 @@ LC1D6:  php
         brk
         brk
         brk
+
 LC1F2:  plx
         bit     CLRROM
         rti
@@ -334,7 +335,9 @@ LC1FD:  jmp     LC1A9
         bra     LC211
 
         sec                     ; $Cn05 = $38 Pascal 1.1 sig
-        bcc     LC220           ; $Cn07 = $18 Pascal 1.1 sig
+        .byte   OPC_BCC         ; never taken
+
+        clc                     ; $Cn07 = $18 Pascal 1.1 sig
         clv
         bra     LC211
 
@@ -358,96 +361,99 @@ LC21A:  jmp     $C530
 
 LC21D:  jmp     $C538
 
+        ;; ???
 LC220:  lda     $077C
         and     #$F1
         sta     $077C
         sec
         lda     RDVBL
-        bmi     LC258
+        bmi     @l2
         sta     PTRIG
         lda     #$08
         tsb     $077C
         clc
         bit     $067C
-        bpl     LC24E
+        bpl     @l1
         lda     #$20
         tsb     $077C
         lda     $07FC
         and     #$02
-        beq     LC24E
+        beq     @l1
         tsb     $077C
         stz     $067C
-LC24E:  bit     RD63
-        bmi     LC258
+@l1:    bit     RD63
+        bmi     @l2
         lda     #$04
         tsb     $077C
-LC258:  lda     RDCXROM
+@l2:    lda     RDCXROM
         ora     RDC3ROM
-        bmi     LC263
-        jmp     LC2ED
+        bmi     @l3
+        jmp     @l12
 
-LC263:  sta     $067C
+@l3:    sta     $067C
         lda     RDCXROM
         sta     $C048           ; ???
-        bpl     LC2AE
+        bpl     @l7
         txa
-        bpl     LC28B
+        bpl     @l5
         lda     $067D
         cmp     $047C
-        bne     LC281
+        bne     @l4
         lda     $077D
         cmp     $057C
-        beq     LC2EC
-LC281:  inc     $047C
-        bne     LC2EC
+        beq     @l11
+@l4:    inc     $047C
+        bne     @l11
         inc     $057C
-        bra     LC2EC
-LC28B:  lda     $047D
+        bra     @l11
+@l5:    lda     $047D
         cmp     $047C
-        bne     LC29B
+        bne     @l6
         lda     $057D
         cmp     $057C
-        beq     LC2EC
-LC29B:  sec
+        beq     @l11
+@l6:    sec
         lda     $047C
         sbc     #$01
         sta     $047C
         lda     $057C
         sbc     #$00
         sta     $057C
-        bra     LC2EC
-LC2AE:  tya
-        bmi     LC2CB
+        bra     @l11
+@l7:    tya
+        bmi     @l9
         lda     $06FD
         cmp     $04FC
-        bne     LC2C1
+        bne     @l8
         lda     $07FD
         cmp     $05FC
-        beq     LC2EC
-LC2C1:  inc     $04FC
-        bne     LC2EC
+        beq     @l11
+@l8:    inc     $04FC
+        bne     @l11
         inc     $05FC
-        bra     LC2EC
-LC2CB:  lda     $04FD
+        bra     @l11
+@l9:    lda     $04FD
         cmp     $04FC
-        bne     LC2DB
+        bne     @l10
         lda     $05FD
         cmp     $05FC
-        beq     LC2EC
-LC2DB:  sec
+        beq     @l11
+@l10:   sec
         lda     $04FC
         sbc     #$01
         sta     $04FC
         lda     $05FC
         sbc     #$00
         sta     $05FC
-LC2EC:  clc
-LC2ED:  bcs     LC2F8
+@l11:   clc
+@l12:   bcs     @l13
         lda     $077C
         and     $07FC
-        beq     LC2F8
+        beq     @l13
         sec
-LC2F8:  rts
+@l13:   rts
+
+        ;; ???
 
         ldx     $EB
         lda     $0342,x
@@ -729,6 +735,7 @@ LC468:  jsr     pageC5_DoBankC5
 
         .res    $C4A0 - *, 0
 
+        ;; ???
 LC4A0:  cld
         phx
         phy
@@ -740,6 +747,7 @@ LC4A0:  cld
         sta     $C0B9
         jmp     LC700
 
+        ;; ???
         pla
         bpl     LC4BE
         sta     ALTZPON
@@ -782,9 +790,13 @@ LC4EA:  jmp     pageC5_LC5F5
         brk
         brk
         brk
+
 LC4F8:  jmp     LC468
 
-        dec     $00,x
+
+        .byte   $D6             ; $CnFB = $D6 mouse signature
+        .byte   $00
+
         jmp     InitMouse
 .endscope
 
