@@ -14,8 +14,8 @@
 ;;; Patches
 
 ;;; Set to 1 to include fixes for:
-;;; * MouseText mode failing to exist on $18 output.
 ;;; * CH not working to set horizontal cursor position.
+;;; * MouseText mode failing to exist on $18 output.
 ;;; * MouseText displaying if $40-$5F sent to COUT.
 INCLUDE_PATCHES = 0
 
@@ -148,225 +148,38 @@ USR     := $FECA
 ;;; ============================================================
 ;;; Page $C0 - Unused (garbage data?)
 
-        .byte   $80
-        .byte   $2C
-        .byte   $80
-        .byte   $03
-        nop
-        pha
-        pla
-        pha
-        pla
-        clc
-        clv
-        pha
-        phx
-        phy
-        .byte   $8D
-        .byte   $79
-        .byte   $06
-        .byte   $8D
-        .byte   $FF
-        .byte   $CF
-        sta     $C079
-        .byte   $50
-        .byte   $0B
-        .byte   $A2
-        rmb0    $86
-        rol     $A2,x
-        .byte   $C1
-        stx     $37
-        jsr     $B000
-        jsr     $B02C
-        sta     $C078
-        ply
-        plx
-        pla
-        rts
-
-        bit     $C12D
-        bra     $C00B
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        bbs7    $FF,$C0D3
-        brk
-        bbs7    $FF,$C0D7
-        brk
-        bbs7    $FF,$C0DB
-        brk
-        bbs7    $FF,$C0DF
-        brk
-        bbs7    $FF,$C0E3
-        brk
-        bbs7    $FF,$C0E7
-        brk
-        bbs7    $FF,$C0EB
-        brk
-        bbs7    $FF,$C0EF
-        brk
-        bbs7    $FF,$C0F3
-        brk
-        bbs7    $FF,$C0F7
-        brk
-        bbs7    $FF,$C0FB
-        brk
-        bbs7    $FF,$C0FF
-        brk
+        .byte   $80, $2c, $80, $03, $ea, $48, $68, $48
+        .byte   $68, $18, $b8, $48, $da, $5a, $8d, $79
+        .byte   $06, $8d, $ff, $cf, $8d, $79, $c0, $50
+        .byte   $0b, $a2, $07, $86, $36, $a2, $c1, $86
+        .byte   $37, $20, $00, $b0, $20, $2c, $b0, $8d
+        .byte   $78, $c0, $7a, $fa, $68, $60, $2c, $2d
+        .byte   $c1, $80, $d8, $00, $00, $00, $00, $00
+        .byte   $00, $00, $00, $00, $00, $00, $00, $00
+        .byte   $00, $00, $00, $00, $00, $00, $00, $00
+        .byte   $00, $00, $00, $00, $00, $00, $00, $00
+        .byte   $00, $00, $00, $00, $00, $00, $00, $00
+        .byte   $00, $00, $00, $00, $00, $00, $00, $00
+        .byte   $00, $00, $00, $00, $00, $00, $00, $00
+        .byte   $00, $00, $00, $00, $00, $00, $00, $00
+        .byte   $00, $00, $00, $00, $00, $00, $00, $00
+        .byte   $00, $00, $00, $00, $00, $00, $00, $00
+        .byte   $00, $00, $00, $00, $00, $00, $00, $00
+        .byte   $00, $00, $00, $00, $00, $00, $00, $00
+        .byte   $00, $00, $00, $00, $00, $00, $00, $00
+        .byte   $00, $00, $00, $00, $00, $00, $00, $00
+        .byte   $00, $00, $00, $00, $00, $00, $00, $00
+        .byte   $00, $00, $00, $00, $00, $00, $00, $00
+        .byte   $00, $00, $00, $00, $00, $00, $00, $00
+        .byte   $00, $00, $00, $00, $00, $00, $00, $00
+        .byte   $00, $00, $00, $00, $00, $00, $00, $00
+        .byte   $00, $00, $00, $00, $00, $00, $00, $00
+        .byte   $ff, $ff, $00, $00, $ff, $ff, $00, $00
+        .byte   $ff, $ff, $00, $00, $ff, $ff, $00, $00
+        .byte   $ff, $ff, $00, $00, $ff, $ff, $00, $00
+        .byte   $ff, $ff, $00, $00, $ff, $ff, $00, $00
+        .byte   $ff, $ff, $00, $00, $ff, $ff, $00, $00
+        .byte   $ff, $ff, $00, $00, $ff, $ff, $00, $00
 
 ;;; ============================================================
 ;;; Page $C1 - Parallel Port Firmware

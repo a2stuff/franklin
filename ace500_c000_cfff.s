@@ -103,12 +103,19 @@ RDLCBNK2:= $C011
 RDLCRAM := $C012
 RDRAMRD := $C013
 RDRAMWRT:= $C014
+RDCXROM := $C015
+RDALTZP := $C016
+RDC3ROM := $C017
 RD80COL := $C018
+RDVBL   := $C019
 RDTEXT  := $C01A
+RDPAGE2 := $C01C
 ALTCHARSET := $C01E
 RD80VID := $C01F
 TXTPAGE1:= $C054
 TXTPAGE2:= $C055
+RD63    := $C063
+PTRIG   := $C070
 ROMIN   := $C081
 ROMIN2  := $C082
 LCBANK2 := $C083
@@ -130,9 +137,13 @@ SETWND  := $FB4B
 SETKBD  := $FE89
 SETVID  := $FE93
 MON_VTAB:= $FC22
+VTABZ   := $FC24
 CLREOP  := $FC42
 HOME    := $FC58
 CLREOL  := $FC9C
+CLREOLZ := $FC9E
+COUT    := $FDED
+COUT1   := $FDF0
 
 ;;; ============================================================
 
@@ -141,282 +152,32 @@ CLREOL  := $FC9C
 ;;; ============================================================
 ;;; Page $C0 - Unused (garbage data?)
 
-LC000:  brk
-LC001:  brk
-LC002:  brk
-LC003:  brk
-LC004:  brk
-LC005:  brk
-        brk
-        brk
-LC008:  brk
-LC009:  brk
-        brk
-        brk
-LC00C:  brk
-LC00D:  brk
-LC00E:  brk
-LC00F:  brk
-LC010:  brk
-LC011:  brk
-LC012:  brk
-LC013:  brk
-LC014:  brk
-LC015:  brk
-LC016:  brk
-LC017:  brk
-LC018:  brk
-LC019:  brk
-LC01A:  brk
-        brk
-LC01C:  brk
-        brk
-LC01E:  brk
-LC01F:  brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-LC048:  brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-LC054:  brk
-LC055:  brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-LC063:  brk
-        brk
-        brk
-LC066:  brk
-LC067:  brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-LC070:  brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-LC080:  brk
-LC081:  brk
-LC082:  brk
-LC083:  brk
-        brk
-        brk
-        brk
-        brk
-        brk
-LC089:  brk
-        brk
-LC08B:  brk
-        brk
-        brk
-        brk
-        brk
-LC090:  brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-LC0A8:  brk
-LC0A9:  brk
-LC0AA:  brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-LC0B4:  brk
-        brk
-        brk
-        brk
-LC0B8:  brk
-LC0B9:  brk
-LC0BA:  brk
-LC0BB:  brk
-LC0BC:  brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
-        brk
+        .res    $100, 0
 
 ;;; ============================================================
 ;;; Page $C1 - Parallel Port Firmware
 
 .scope pageC1
 
-LFDF0           := $FDF0
+LC100:  bra     LC111
+LC102:  bra     LC107
 
-        bra     LC111
-        bra     LC107
-        nop
+LC104:  nop
         sec
         nop
 LC107:  clc
         clv
         bra     LC114
-        ora     ($31,x)
-        .byte   $2B
-        .byte   $33
-        rol     $3E,x
+
+        ;; Signature bytes
+        .byte   $01, $31
+
+        ;; Pascal 1.1 Firmware Protocol Table
+        .byte   .lobyte(LC12B)
+        .byte   .lobyte(LC133)
+        .byte   .lobyte(LC136)
+        .byte   .lobyte(LC13E)
+
 LC111:  bit     LC135
 LC114:  jsr     LC1D6
         pha
@@ -431,37 +192,39 @@ LC122:  jsr     $C83C
         pla
 LC128:  jmp     $C5FA
 
-        jsr     LC1D6
+LC12B:  jsr     LC1D6
         jsr     $C897
         bra     LC128
-        ldx     #$03
+
+LC133:  ldx     #$03
 LC135:  rts
 
-        jsr     LC1D6
+LC136:  jsr     LC1D6
         jsr     $C89D
         bra     LC128
-        jsr     LC1D6
+
+LC13E:  jsr     LC1D6
         jsr     $C8A5
         bra     LC128
 LC146:  lda     #$00
-        bit     LC016
+        bit     RDALTZP
         bpl     LC14F
         ora     #$80
-LC14F:  bit     LC013
+LC14F:  bit     RDRAMRD
         bpl     LC156
         ora     #$40
-LC156:  bit     LC014
+LC156:  bit     RDRAMWRT
         bpl     LC15D
         ora     #$20
-LC15D:  bit     LC011
+LC15D:  bit     RDLCBNK2
         bpl     LC164
         ora     #$10
-LC164:  bit     LC012
+LC164:  bit     RDLCRAM
         bpl     LC16B
         ora     #$08
-LC16B:  bit     LC018
+LC16B:  bit     RD80COL
         bpl     LC177
-        bit     LC01C
+        bit     RDPAGE2
         bpl     LC177
         ora     #$04
 LC177:  rts
@@ -470,10 +233,10 @@ LC178:  phx
         asl     a
         asl     a
         bcc     LC180
-        sta     LC003
+        sta     RDCARDRAM
 LC180:  asl     a
         bcc     LC186
-        sta     LC005
+        sta     WRCARDRAM
 LC186:  asl     a
         bcc     LC193
         asl     a
@@ -487,20 +250,20 @@ LC193:  asl     a
         ldx     #$0B
         .byte   $2C
 LC199:  ldx     #$09
-LC19B:  bit     LC080,x
-        bit     LC080,x
+LC19B:  bit     $C080,x
+        bit     $C080,x
         asl     a
         bcc     LC1A7
-        sta     LC055
+        sta     TXTPAGE2
 LC1A7:  plx
         rts
 
 LC1A9:  bit     #$04
         beq     LC1B0
-        sta     LC054
-LC1B0:  sta     LC002
-        sta     LC004
-        bit     LC081
+        sta     TXTPAGE1
+LC1B0:  sta     RDMAINRAM
+        sta     WRMAINRAM
+        bit     ROMIN
         rts
 
         brk
@@ -526,14 +289,14 @@ LC1C1:  brk
         brk
         brk
         jsr     LC128
-        jsr     LFDF0
+        jsr     COUT1
 LC1D6:  php
         sei
         pha
         lda     #$C1
         sta     $07F8
-        sta     LC0BA
-        sta     LC0B8
+        sta     $C0BA
+        sta     $C0B8
         sta     CLRROM
         pla
         plp
@@ -561,33 +324,41 @@ LC1FD:  jmp     LC1A9
 ;;; ============================================================
 ;;; Page $C2 - ???
 
+.scope pageC2
         bit     $C5A7
         bra     LC211
+
         sec
         bcc     LC220
         clv
         bra     LC211
-        ora     ($31,x)
-        trb     $17
-        inc     a
-        .byte   $1D
+
+        ;; Signature bytes
+        .byte   $01, $31
+
+        ;; Pascal 1.1 Firmware Protocol Table
+        .byte   .lobyte(LC214)
+        .byte   .lobyte(LC217)
+        .byte   .lobyte(LC21A)
+        .byte   .lobyte(LC21D)
+
 LC211:  jmp     $C500
 
-        jmp     $C51F
+LC214:  jmp     $C51F
 
-        jmp     $C528
+LC217:  jmp     $C528
 
-        jmp     $C530
+LC21A:  jmp     $C530
 
-        jmp     $C538
+LC21D:  jmp     $C538
 
 LC220:  lda     $077C
         and     #$F1
         sta     $077C
         sec
-        lda     LC019
+        lda     RDVBL
         bmi     LC258
-        sta     LC070
+        sta     PTRIG
         lda     #$08
         tsb     $077C
         clc
@@ -600,18 +371,18 @@ LC220:  lda     $077C
         beq     LC24E
         tsb     $077C
         stz     $067C
-LC24E:  bit     LC063
+LC24E:  bit     RD63
         bmi     LC258
         lda     #$04
         tsb     $077C
-LC258:  lda     LC015
-        ora     LC017
+LC258:  lda     RDCXROM
+        ora     RDC3ROM
         bmi     LC263
         jmp     LC2ED
 
 LC263:  sta     $067C
-        lda     LC015
-        sta     LC048
+        lda     RDCXROM
+        sta     $C048           ; ???
         bpl     LC2AE
         txa
         bpl     LC28B
@@ -676,6 +447,7 @@ LC2F8:  rts
         lda     $0342,x
         .byte   $8D
         .byte   $12
+.endscope
 
 ;;; ============================================================
 ;;; Page $C3 - Enhanced 80 Column Firmware
@@ -710,7 +482,7 @@ LC307:  clc
 
         ;; XFER
         .assert * = XFER, error, "Entry point mismatch"
-        jsr     extra_DoBankC5
+        jsr     pageC5_DoBankC5
         jmp     $CC03           ; ???
 
 ;;; ============================================================
@@ -719,7 +491,7 @@ LC307:  clc
 
 JPINIT: jsr     ClearROM
         jsr     PascalInit
-LC320:  jmp     extra_DoBankC5
+LC320:  jmp     pageC5_DoBankC5
 
 JPREAD: jsr     ClearROM
         jsr     PascalRead
@@ -734,7 +506,7 @@ JPSTAT: jsr     ClearROM
         bra     LC320
 
 JumpAuxMove:
-        jsr     extra_DoBankC5
+        jsr     pageC5_DoBankC5
         jmp     $CC06
 
 ;;; ============================================================
@@ -796,7 +568,7 @@ l8:     ldx     SAVEX
         sty     OURCH
         sty     XCOORD
         ldy     SAVEY
-        jmp     extra_DoBankC5
+        jmp     pageC5_DoBankC5
 
 ;;; ============================================================
 ;;; Escape Mode
@@ -835,7 +607,7 @@ SETV:   rts
         brk
         brk
         brk
-        jsr     extra_DoBankC5
+        jsr     pageC5_DoBankC5
         jmp     $CC00
 
 LC3E2:  plx
@@ -856,17 +628,9 @@ LC3FA:  jsr     ClearROM
         jmp     LCCF5
 
 ;;; ============================================================
-;;; Pages $C4-C7 - ???
+;;; Page $C4 - ???
 
-.scope extra
-
-LFC24           := $FC24
-LFC58           := $FC58
-LFC9E           := $FC9E
-LFDED           := $FDED
-LFDF0           := $FDF0
-LFF4A           := $FF4A
-
+.scope pageC4
 
         bit     LC42E
         bra     LC41C
@@ -874,15 +638,24 @@ LFF4A           := $FF4A
         bcc     LC420
         clv
         bra     LC41C
-        ora     ($20,x)
-        bit     $2C2C
-        bit     $2F00
+
+        ;; Signature bytes
+        .byte   $01, $20
+
+        ;; Pascal 1.1 Firmware Protocol Table
+        .byte   .lobyte(LC42C)
+        .byte   .lobyte(LC42C)
+        .byte   .lobyte(LC42C)
+        .byte   .lobyte(LC42C)
+
+        .byte   0
+        .byte   $2F
         and     $3B,x
         eor     ($47,x)
         eor     $5953
         .byte   $2C
         .byte   $5F
-LC41C:  jsr     DoBankC5
+LC41C:  jsr     pageC5_DoBankC5
         .byte   $50
 LC420:  .byte   $03
         jsr     LC806
@@ -891,38 +664,38 @@ LC420:  .byte   $03
 
 LC429:  jmp     LC825
 
-        ldx     #$03
+LC42C:  ldx     #$03
 LC42E:  rts
 
-        jsr     DoBankC5
+        jsr     pageC5_DoBankC5
         jmp     $C8D4
 
-        jsr     DoBankC5
+        jsr     pageC5_DoBankC5
         jmp     $C916
 
-        jsr     DoBankC5
+        jsr     pageC5_DoBankC5
         jmp     $C922
 
-        jsr     DoBankC5
+        jsr     pageC5_DoBankC5
         jmp     $C958
 
-        jsr     DoBankC5
+        jsr     pageC5_DoBankC5
         jmp     $C967
 
-        jsr     DoBankC5
+        jsr     pageC5_DoBankC5
         jmp     $C969
 
-        jsr     DoBankC5
+        jsr     pageC5_DoBankC5
         jmp     $C93E
 
-LC459:  jsr     DoBankC5
+LC459:  jsr     pageC5_DoBankC5
         jmp     $C8AC
 
         ldx     $C066
         ldy     $C067
         jmp     $C220
 
-LC468:  jsr     DoBankC5
+LC468:  jsr     pageC5_DoBankC5
         jmp     $C9A0
 
         brk
@@ -1015,7 +788,7 @@ LC4E4:  jmp     $C1F2
 
 LC4E7:  jmp     LC3E2
 
-LC4EA:  jmp     LC5F5
+LC4EA:  jmp     pageC5_LC5F5
 
         brk
         brk
@@ -1032,6 +805,12 @@ LC4F8:  jmp     LC468
 
         dec     $00,x
         jmp     LC459
+.endscope
+
+;;; ============================================================
+;;; Page $C5
+
+.scope pageC5
 
 LC500:  jsr     BankC5
         sta     $067A
@@ -1068,12 +847,12 @@ LC51A:  ply
 
         jsr     BankC8
         ora     #$80
-        jsr     LFDF0
+        jsr     COUT1
         bra     BankC5
 
         jsr     BankC8
         ora     #$80
-        jsr     LFDED
+        jsr     COUT
         bra     BankC5
 
         jsr     BankC8
@@ -1086,11 +865,11 @@ LC51A:  ply
         bra     BankC5
 
         jsr     BankC8
-        jsr     LFC9E
+        jsr     CLREOLZ
         bra     BankC5
 
         jsr     BankC8
-        jsr     LFC58
+        jsr     HOME
         bra     BankC5
 
         jsr     BankC8
@@ -1098,15 +877,15 @@ LC51A:  ply
         bra     BankC5
 
         jsr     BankC8
-        jsr     LC4F8
+        jsr     pageC4::LC4F8
         bra     BankC5
 
         jsr     BankC8
-        jsr     LC7FD
+        jsr     pageC7_LC7FD
         bra     BankC5
 
         jsr     BankC8
-        jsr     LFC24
+        jsr     VTABZ
         ;; Fall through
 
 ;;; ============================================================
@@ -1202,12 +981,19 @@ DoBankC5:
 ;;; ============================================================
 
         jmp     LC5C6
+.endscope
+pageC5_DoBankC5 := pageC5::DoBankC5
+pageC5_LC5F5 := pageC5::LC5F5
 
+;;; ============================================================
+;;; Page $C6 - Disk II Driver
+
+.scope pageC6
         bit     $20
         cpy     $00
         ldx     #$03
         asl     A1L
-        jsr     DoBankC5
+        jsr     pageC5::DoBankC5
         ldy     #$69
 LC60D:  lda     $CF26,y
         sta     $036C,y
@@ -1306,7 +1092,7 @@ LC62D:  dec     $27
         nop
         nop
 LC683:  pla
-LC684:  jsr     DoBankC5
+LC684:  jsr     pageC5::DoBankC5
         jsr     LCE00
         bra     LC6EA
         brk
@@ -1413,7 +1199,17 @@ LC6EA:  nop
         jmp     $0801
 
         .byte   $DE
-        brk
+        .byte   $00             ; $00 = Disk II, 16-Sector
+.endscope
+
+;;; ============================================================
+;;; Page $C7 - ???
+
+LC700:
+.scope pageC7
+
+LFF4A           := $FF4A
+
 LC700:  jsr     $C1F7
         pha
         jsr     $C1FD
@@ -1452,7 +1248,7 @@ LC739:  pha
         php
         jmp     (L03FE)
 
-LC744:  jmp     LC4BE
+LC744:  jmp     pageC4::LC4BE
 
 LC747:  pla
         sta     $44
@@ -1469,7 +1265,7 @@ LC751:  pla
         sta     $3A
         ply
         sty     $3B
-        bit     $C016
+        bit     RDALTZP
         bpl     LC781
         tsx
         stx     $0101
@@ -1554,7 +1350,7 @@ LC7E5:  sta     WRCARDRAM
         brk
 LC7FD:  jmp     LC792
 .endscope
-extra_DoBankC5 := extra::DoBankC5
+pageC7_LC7FD := pageC7::LC7FD
 
 ;;; ============================================================
 
@@ -2352,7 +2148,7 @@ LCC8D:  bit     TXTPAGE2
         sta     CLR80COL
         bra     LCC64
 LCCB2:  jsr     LCCB8
-        jmp     extra::DoBankC5           ; bad disasm or ...?
+        jmp     pageC5::DoBankC5           ; bad disasm or ...?
 
 LCCB8:  bit     $0579
         bmi     LCCD7
@@ -2385,7 +2181,7 @@ LCCE1:  phx
         beq     LCCDC
         bra     LCCD5
 LCCF5:  jsr     LCCFB
-        jmp     extra::DoBankC5
+        jmp     pageC5::DoBankC5
 
 LCCFB:  bit     $0579
         bpl     LCD03
@@ -2531,7 +2327,7 @@ LCE00:  asl     $9D
         stz     $0579
 LCE0D:  jsr     LCDA8
         sta     $04F9
-        jmp     extra::DoBankC5
+        jmp     pageC5::DoBankC5
 
 LCE16:  pha
         lda     RDRAMRD
