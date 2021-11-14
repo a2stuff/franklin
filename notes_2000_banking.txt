@@ -1,0 +1,24 @@
+U1 - entire ROM can be banked into $Axxx/Bxxx (with $C079/$C078 softswitches)
+$0000-05FF	(empty)
+$0600-06FF	Slot 6 Disk Controller firmware     mapped directly to $C6xx
+$0700-07FF	(empty)
+$0800-0A34	Disk Controller Expansion ROM       code "works" when run from $C800-CA34
+$0A35-0AFF	(empty)
+$0B00-0CE6	Unknown, possibly a self-test?      code "works" when run from $CB00-CCE6
+$0CE7-0FFF	(empty)
+$1000-14D7	Parallel Port functions             code "works" when run from $B000-B4D7
+$14D8-1FFF	(empty)
+
+U2 - appears to mimic Apple "CD ROM" including most banking logic except for the "Slot 1" range
+$0000-00FF	Slot 1 Parallel Port firmware       mapped to $C1xx, banks U1 into $Bxxx to function
+$0100-015B	Unknown code
+$015C-02FF	(empty)
+$0300-03FF	Slot 3 80-column firmware           mapped to $C3xx
+$0400-054F	Unknown code, probably 80—col       unknown location, likely $C400-C54F
+$0550-07FF	(empty)
+$0800-0FFF	Expansion ROM, probably for 80-col  code "works" when run from $C800-CFFF
+            (this is the ROM code mapped to $C800-CFFF during "idle" at a BASIC prompt)
+$1000-1FFF	BASIC                               mapped directly to $Dxxx
+
+U3 - appears to mimic Apple "EF ROM" - fixed, no banking options
+$0000-1FFF	BASIC/Monitor                       mapped directly to $Exxx/Fxxx
