@@ -1,0 +1,37 @@
+The ACE 500 has a single 32k ROM, with different parts
+banked in dynamically.
+
+__Offsets ___
+$0000 - $00FF - (empty)
+$0100 - $0200 - Serial port firmware???
+$0200 - $04FF - (empty)
+$0500 - $05FF - ???
+$0600 - $07FF - (empty)
+$0800 - $0FFF - Firmware ??? (note: fragments of source code in padding)
+
+$1000 - $17FF - (empty)
+$1800 - $1FFF - Serial firmware? ("ACE 500 TERMINAL MODE")
+$2000 - $23FF - (empty)
+$2400 - $24FF - ??? Mapped into $C4 ???
+$2500 - $25FF - (empty)
+$2600 - $26FF - ???
+$2700 - $2FFF - (empty)
+
+$3000 - $32FF - ???
+$3300 - $33FF - ???
+$3400 - $35FF - ???
+$3600 - $37FF - ???
+$3800 - $3FFF - (empty)
+$4000 - $40FF - (empty)
+$4100 - $41FF - Parallel Firmware  - Mapped into $C1
+$4200 - $42FF - Serial Firmware    - Mapped into $C2
+$4300 - $43FF - 80 Column Firmware - Mapped into $C3
+$4400 - $44FF - ???
+$4500 - $45FF - ???
+$4600 - $46FF - Disk II Firmware   - Mapped into $C6
+$4700 - $47FF - ???
+
+$4800 - $4FFF - 80 Column Firmware - Mapped into $C8-$CF (incl. source code)
+
+$5000 - $77FF - Applesoft BASIC    - Mapped into $D0-$F7
+$7800 - $7FFF - Monitor ROM        - Mapped into $F8-$FF
