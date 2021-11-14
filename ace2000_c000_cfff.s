@@ -141,102 +141,126 @@ MON_INPRT := $FE8D
 REGZ    := $FEBF
 USR     := $FECA
 
-;;; ============================================================
+;;; Franklin ACE 2X00-specific softswitches
 
-        .org    $C000
-
-;;; ============================================================
-;;; Page $C0 - Unused (garbage data?)
-
-        .byte   $80, $2c, $80, $03, $ea, $48, $68, $48
-        .byte   $68, $18, $b8, $48, $da, $5a, $8d, $79
-        .byte   $06, $8d, $ff, $cf, $8d, $79, $c0, $50
-        .byte   $0b, $a2, $07, $86, $36, $a2, $c1, $86
-        .byte   $37, $20, $00, $b0, $20, $2c, $b0, $8d
-        .byte   $78, $c0, $7a, $fa, $68, $60, $2c, $2d
-        .byte   $c1, $80, $d8, $00, $00, $00, $00, $00
-        .byte   $00, $00, $00, $00, $00, $00, $00, $00
-        .byte   $00, $00, $00, $00, $00, $00, $00, $00
-        .byte   $00, $00, $00, $00, $00, $00, $00, $00
-        .byte   $00, $00, $00, $00, $00, $00, $00, $00
-        .byte   $00, $00, $00, $00, $00, $00, $00, $00
-        .byte   $00, $00, $00, $00, $00, $00, $00, $00
-        .byte   $00, $00, $00, $00, $00, $00, $00, $00
-        .byte   $00, $00, $00, $00, $00, $00, $00, $00
-        .byte   $00, $00, $00, $00, $00, $00, $00, $00
-        .byte   $00, $00, $00, $00, $00, $00, $00, $00
-        .byte   $00, $00, $00, $00, $00, $00, $00, $00
-        .byte   $00, $00, $00, $00, $00, $00, $00, $00
-        .byte   $00, $00, $00, $00, $00, $00, $00, $00
-        .byte   $00, $00, $00, $00, $00, $00, $00, $00
-        .byte   $00, $00, $00, $00, $00, $00, $00, $00
-        .byte   $00, $00, $00, $00, $00, $00, $00, $00
-        .byte   $00, $00, $00, $00, $00, $00, $00, $00
-        .byte   $00, $00, $00, $00, $00, $00, $00, $00
-        .byte   $00, $00, $00, $00, $00, $00, $00, $00
-        .byte   $ff, $ff, $00, $00, $ff, $ff, $00, $00
-        .byte   $ff, $ff, $00, $00, $ff, $ff, $00, $00
-        .byte   $ff, $ff, $00, $00, $ff, $ff, $00, $00
-        .byte   $ff, $ff, $00, $00, $ff, $ff, $00, $00
-        .byte   $ff, $ff, $00, $00, $ff, $ff, $00, $00
-        .byte   $ff, $ff, $00, $00, $ff, $ff, $00, $00
+BankU1In        := $C079        ; Map U1 into $A000-$BFFF
+BankU1Out       := $C078        ; Map U1 out, and RAM back in to $A000-$BFFF
 
 ;;; ============================================================
-;;; Page $C1 - Parallel Port Firmware
+;;; U2 $0000 - Mapped to Page $C1 - Parallel Port Firmware
+;;; ============================================================
 
-LC100:  lda     $24
+        .org    $C100
+
+.scope offset00_pageC1
+
+        bra     @l5
+        bra     @l1
+        nop
+        pha
+        pla
+@l1:    pha
+        pla
+        clc
+        clv
+@l2:    pha
+        phx
+        phy
+        sta     $0679
+        sta     CLRROM
+        sta     BankU1In
+        bvc     @l3
+        ldx     #<@l1
+        stx     $36
+        ldx     #>@l1
+        stx     $37
+        jsr     $B000           ; Entry point in U1
+@l3:    jsr     $B02C           ; Entry point in U1
+        sta     BankU1Out
+        ply
+        plx
+        pla
+@l4:    rts
+
+@l5:    bit     @l4
+        bra     @l2
+
+        .res    $C1D0 - *, 0
+
+        .byte   $ff, $ff, $00, $00, $ff, $ff, $00, $00
+        .byte   $ff, $ff, $00, $00, $ff, $ff, $00, $00
+        .byte   $ff, $ff, $00, $00, $ff, $ff, $00, $00
+        .byte   $ff, $ff, $00, $00, $ff, $ff, $00, $00
+        .byte   $ff, $ff, $00, $00, $ff, $ff, $00, $00
+        .byte   $ff, $ff, $00, $00, $ff, $ff, $00, $00
+.endscope
+
+;;; ============================================================
+;;; U2 $0100 - Mapped to ??? - ???
+;;; ============================================================
+
+        .org    $0100
+
+.scope offset01
+@l1:    lda     $24
         pha
         lda     $22
         sta     $25
         stz     $24
         jsr     MON_VTAB
-LC10C:  jsr     $FA37           ; ???
+@l2:    jsr     $FA37           ; ???
         ldy     $29
         sty     $2B
         ldy     $28
         sty     $2A
         lda     $23
-        beq     LC151
+        beq     @l7
         dec     a
         cmp     $25
-        beq     LC151
-        bcc     LC151
+        beq     @l7
+        bcc     @l7
         inc     $25
         jsr     MON_VTAB
         ldy     $21
         dey
         bit     RD80VID
-LC12D:  bmi     LC138
-LC12F:  lda     ($28),y
+@l3:    bmi     @l5
+@l4:    lda     ($28),y
         sta     ($2A),y
         dey
-        bpl     LC12F
-        bra     LC10C
-LC138:  tya
+        bpl     @l4
+        bra     @l2
+@l5:    tya
         lsr     a
         tay
-LC13B:  bit     TXTPAGE1
+@l6:    bit     TXTPAGE1
         lda     ($28),y
         sta     ($2A),y
         bit     TXTPAGE2
         lda     ($28),y
         sta     ($2A),y
         dey
-        bpl     LC13B
+        bpl     @l6
         bit     TXTPAGE1
-        bra     LC10C
-LC151:  stz     $24
+        bra     @l2
+@l7:    stz     $24
         jsr     CLREOL
         plx
         stx     $24
         jmp     MON_VTAB
+.endscope
 
 ;;; ============================================================
+;;; U2 $0200 - Empty
+;;; ============================================================
 
-        .res $C300 - *, 0
+        .res $0300 - *, 0
 
 ;;; ============================================================
-;;; Page $C3 - Enhanced 80 Column Firmware
+;;; U2 $0300 - Mapped to Page $C3 - Enhanced 80 Column Firmware
+;;; ============================================================
+
+        .org $C300
 
         ;; Init
 LC300:  bit     SETV            ; V = init
@@ -433,7 +457,8 @@ EscapeMode:
         jmp     UnknownEP5
 
 ;;; ==================================================
-;;; Page $C4 - ???
+;;; U2 $0400 - Mapped to Page $C4 - ???
+;;; ==================================================
 
         .assert * = $C400, error, "Mismatch"
 .scope
@@ -665,7 +690,8 @@ LC4ED:
         .res    $C800 - *, 0
 
 ;;; ============================================================
-;;; Pages $C8-$CF - Enhanced 80 Column Firmware
+;;; U2 $0800 - Pages $C8-$CF - Enhanced 80 Column Firmware
+;;; ============================================================
 
 LC800:  lda     #M_NORMAL
         sta     MODE
