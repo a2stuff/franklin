@@ -85,6 +85,8 @@ OLDBASL := $77B
 TEMP2   := $7FB
 OLDBASH := $7FB
 
+FKEYPTR := $479                 ; Holds offset from Aux $200 to FKEY def
+
 ;;; I/O Soft Switches
 
 KBD     := $C000
@@ -446,7 +448,7 @@ EscapeMode:
 
         ;; Called by U3 ROM ($F809)
         bit     CLRROM
-        jmp     UnknownEP3
+        jmp     InitFKEYDefinitions
 
         ;; Called by U3 ROM ($F9B7)
         bit     CLRROM
@@ -454,7 +456,7 @@ EscapeMode:
 
         ;; Called by U3 ROM ($FA9E)
         bit     CLRROM
-        jmp     UnknownEP5
+        jmp     HandleSpecialKeys
 
 ;;; ==================================================
 ;;; U2 $0400 - Mapped to Page $C4 - ???
@@ -770,7 +772,7 @@ LC853:  inc     RNDL
 :
         jsr     UnknownEP4
         bcc     LC853
-        jsr     UnknownEP5
+        jsr     HandleSpecialKeys
         cmp     #$06
         bcc     LC86E
         and     #$7F
@@ -1602,61 +1604,64 @@ UnknownEP4:
         bra     @l1
 
 @l5:    phx
-        ldx     $0479
-        jsr     LCE1F
+        ldx     FKEYPTR
+        jsr     ReadAuxRAM
         lda     $0200,x
-        jsr     LCE2E
+        jsr     ReadPreviousRAM
         plx
         cmp     #$00
         beq     @l4
         bra     @l2
 
 ;;; ============================================================
-;;; Unknown Monitor ROM Routine
+;;; Handle special keys (F1-12, RUN, LIST, etc)
 
-UnknownEP5:
+HandleSpecialKeys:
         bit     $0579
         bmi     @l11
         lda     KBD
         bit     KBDSTRB
-        bit     $C027           ; Special keys (F1, LIST, etc) or ALT + alphanumeric
+        bit     $C027           ; high bit clear for special keys
         bpl     @l3
 @l1:    cmp     #$06
         bcc     @l2
         ora     #$80
 @l2:    rts
 
+        ;; Deal with special keys
 @l3:    and     #$7F
-        cmp     #$01
+        cmp     #$01            ; CLRL
         bne     @l4
         lda     #$1A
         bra     @l1
 
-@l4:    cmp     #$03
+@l4:    cmp     #$03            ; CLRS
         bne     @l5
         lda     #$0C
         bra     @l1
 
-@l5:    cmp     #$04
+@l5:    cmp     #$04            ; HOME
         bne     @l6
         lda     #$19
         bra     @l1
 
-@l6:    cmp     #$06
+        ;; "Macro" keys
+@l6:    cmp     #$06            ; RUN
         bne     @l7
-        lda     #$2C
+        lda     #$2C            ; Like F13
         bra     @l9
 
-@l7:    cmp     #$1F
+@l7:    cmp     #$1F            ; LIST
         bne     @l8
-        lda     #$2D
+        lda     #$2D            ; Like F14
         bra     @l9
 
-@l8:    cmp     #$20            ; space?
+@l8:    cmp     #$20            ; F1
         bcc     @l1
-        cmp     #$2C            ; comma?
+        cmp     #$2C            ; F12+1
         bcs     @l1
-@l9:    pha
+
+@l9:    pha                     ; Handle Fkeys
         jsr     LCDB3
         beq     @l10
         pla
@@ -1665,7 +1670,7 @@ UnknownEP5:
 @l10:   lda     #$FF
         sta     $0579
         pla
-        jsr     LCDC9
+        jsr     FindFKEYDefnOffset
 @l11:   jsr     LCDB3
         beq     @l13
 @l12:   stz     $0579
@@ -1673,19 +1678,19 @@ UnknownEP5:
         bra     @l1
 
 @l13:   phx
-        ldx     $0479
-        jsr     LCE1F
+        ldx     FKEYPTR
+        jsr     ReadAuxRAM
         lda     $0200,x
-        jsr     LCE2E
+        jsr     ReadPreviousRAM
         plx
-        inc     $0479
+        inc     FKEYPTR
         cmp     #$00
         beq     @l12
         bra     @l1
 
 ;;; ============================================================
 
-LCDB3:  jsr     LCE1F
+LCDB3:  jsr     ReadAuxRAM
         lda     #$00
         phx
         tax
@@ -1694,53 +1699,59 @@ LCDB3:  jsr     LCE1F
         inx
         bne     @l1
         plx
-        jsr     LCE2E
+        jsr     ReadPreviousRAM
         cmp     $04F9
         rts
 
 ;;; ============================================================
+;;; Given FKEY in A ($20...$2D), get definition offset
+;;; (from Aux $200) into FKEYPTR
 
-LCDC9:  phx
+FindFKEYDefnOffset:
+        phx
         phy
-        jsr     LCE1F
+        jsr     ReadAuxRAM
         sec
-        sbc     #$20
+        sbc     #$20            ; Map F1 to $00, etc
         ldy     #$00
         tax
-        beq     LCDE2
-LCDD6:  lda     $0200,y
-        beq     LCDDE
+        beq     @l3
+@l1:    lda     $0200,y
+        beq     @l2
         iny
-        bra     LCDD6
+        bra     @l1
 
-LCDDE:  iny
-LCDDF:  dex
-        bne     LCDD6
-LCDE2:  jsr     LCE2E
-        sty     $0479
+@l2:    iny
+        dex
+        bne     @l1
+@l3:    jsr     ReadPreviousRAM
+        sty     FKEYPTR
         ply
         plx
         rts
 
 ;;; ============================================================
+;;; Initialize FKEY definitions
 
-        ;; Function key shortcuts ???
+;;; Copied to Aux $200 by `InitFKEYDefinitions`
+SpecialStrings:
         .byte   "RUN\r", 0
         .byte   "LIST\r", 0
         .byte   $ff
 
-;;; ============================================================
-;;; Unknown Monitor ROM Routine
-
-UnknownEP3:
+InitFKEYDefinitions:
         sta     WRCARDRAM
         lda     #$00
         tax
+
+        ;; F1...F12 are initially 0 length, so 12 $00 bytes
 @l1:    sta     $0200,x
         inx
-        cpx     #$0C
+        cpx     #12
         bcc     @l1
-@l2:    lda     LCDDF,x
+
+        ;; RUN and LIST are like F13 and F14, so they're next.
+@l2:    lda     SpecialStrings - 12,x
         cmp     #$FF
         beq     @l3
         sta     $0200,x
@@ -1760,7 +1771,10 @@ UnknownEP2:
 
 ;;; ============================================================
 
-LCE1F:  pha
+;;; Read from Aux (saving previous state)
+
+ReadAuxRAM:
+        pha
         lda     RDRAMRD
         sta     RDMAINRAM
         sta     $07F8
@@ -1768,7 +1782,10 @@ LCE1F:  pha
         pla
         rts
 
-LCE2E:  pha
+;;; Restore previous read bank state
+
+ReadPreviousRAM:
+        pha
         sta     RDMAINRAM
         lda     $07F8
         bpl     @l1
