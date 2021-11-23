@@ -3,10 +3,10 @@ banked in dynamically.
 
 Softswitches:
 $C0B4 R
-$C0B8 W Banks in $3000, to $C8 after: C0B4=8d  C0BC=3d
-$C0B9 W Banks in $3000, to $C8 after: C0B4=8d  C0BC=b4
-$C0BA W Banks in $4800, to $C8 after: C0B4=8d  C0BC=ff
-$C0BB W Banks in $4800, to $C8 after: C0B4=8d  C0BC=b4
+$C0B8 W Banks in $3000 to $C8; after: C0B4=8d  C0BC=3d
+$C0B9 W Banks in $3000 to $C8; after: C0B4=8d  C0BC=b4
+$C0BA W Banks in $4800 to $C8; after: C0B4=8d  C0BC=ff
+$C0BB W Banks in $4800 to $C8; after: C0B4=8d  C0BC=b4
 $C0BC R
 
 Notes: A/8 and B/9 usually hit together
@@ -22,6 +22,8 @@ After A/8:
  * $0600 is mapped into $C6
  * ????? is mapped into $C7
 
+$Cnxx access maps $3000 into $C8
+
 ___Offsets___
 $0000 - $00FF - (empty)
 $0100 - $0200 - Parallel Firmware  - Mapped into $C1
@@ -33,7 +35,7 @@ $0800 - $0FFF - Firmware ??? *
 
 $1000 - $17FF - (empty)
 
-$1800 - $1FFF - Serial firmware? ("ACE 500 TERMINAL MODE")
+$1800 - $1FFF - Serial interface ("ACE 500 TERMINAL MODE")
 
 $2000 - $23FF - (empty)
 $2400 - $24FF - ??? Mapped into $C4 ???
@@ -65,3 +67,14 @@ $5000 - $77FF - Applesoft BASIC    - Mapped into $D0-$F7
 $7800 - $7FFF - Monitor ROM        - Mapped into $F8-$FF
 
 * = includes fragments of source code!
+
+============================================================
+
+Enter terminal mode with:
+
+PR#2
+Ctrl-A T
+
+Then e.g. configuration menu with:
+Ctrl-A H
+(See Franklin ACE 500 User Manual)

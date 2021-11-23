@@ -1619,7 +1619,7 @@ UnknownEP5:
         bmi     @l11
         lda     KBD
         bit     KBDSTRB
-        bit     $C027           ; ???
+        bit     $C027           ; Special keys (F1, LIST, etc) or ALT + alphanumeric
         bpl     @l3
 @l1:    cmp     #$06
         bcc     @l2
