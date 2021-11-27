@@ -83,6 +83,8 @@ OLDBASL := $77B
 TEMP2   := $7FB
 OLDBASH := $7FB
 
+FKEYPTR := $479                 ; Holds offset from Aux $200 to FKEY def
+
 ;;; I/O Soft Switches
 
 KBD     := $C000
@@ -633,7 +635,7 @@ LC3E2:  plx
         jmp     LCE0D
 
         jsr     ClearROM
-        jmp     LCDEC
+        jmp     InitFKEYDefinitions
 
 LC3F4:  jsr     ClearROM
         jmp     LCCB2
@@ -992,7 +994,7 @@ LC62D:  dec     $27
 
 LC683:  pla
 LC684:  jsr     pageC5::DoBankC5
-        jsr     LCE00
+        jsr     $CE00
         bra     LC6EA
 
 
@@ -1101,13 +1103,16 @@ LC774:  sta     ALTZPON
         bpl     LC774
 LC781:  jmp     (L03F0)
 
+;;; ============================================================
+
 LC784:  sec
-        lda     $C0AA
+        lda     $C0AA           ; ???
         tax
         and     #$0C
         eor     #$04
         beq     LC7E4
-        lda     $C0A9
+        lda     $C0A9           ; ???
+
 LC792:  sta     $04FA
         ora     #$00
         bpl     LC7E4
@@ -1120,30 +1125,30 @@ LC792:  sta     $04FA
         lda     $04FF
         eor     #$C2
         bne     LC7E4
-        lda     $C0A8
+        lda     $C0A8           ; ???
         ldx     $057F
         jsr     LC7E5
         bpl     LC7B8
         ldx     #$00
 LC7B8:  stx     $057F
         bra     LC7E3
-LC7BD:  .byte   $2C
-        plx
-LC7BF:  tsb     $50
-        and     ($2C,x)
-        plx
-        ora     $70
-        ora     $1A10,x
+
+LC7BD:
+        bit     $04FA
+        bvc     LC7E3
+        bit     $05FA
+        bvs     LC7E4
+        bpl     LC7E3
         lda     KBD
-        bit     $C0B4
-        bmi     LC7D3
+        bit     $C0B4           ; Softswitch for Fkeys ???
+        bmi     :+              ; leave high bit set for later
         and     #$7F
-LC7D3:  bit     KBDSTRB
+:       bit     KBDSTRB
         ldx     $05FF
         jsr     LC7E5
-        bne     LC7E0
+        bne     :+
         ldx     #$80
-LC7E0:  stx     $05FF
+:       stx     $05FF
 LC7E3:  clc
 LC7E4:  rts
 
@@ -1153,6 +1158,8 @@ LC7E5:  sta     WRCARDRAM
         inx
         rts
 
+;;; ============================================================
+
         brk
         brk
         brk
@@ -1166,7 +1173,9 @@ LC7E5:  sta     WRCARDRAM
         brk
         brk
         brk
+
 LC7FD:  jmp     LC792
+
 .endscope
 pageC7_LC7FD := pageC7::LC7FD
 
@@ -1192,7 +1201,7 @@ LC806:  lda     #<LC305
 LC814:  lda     #M_NORMAL
         sta     MODE
         jsr     Enable80Col
-        jsr     LCE33
+        jsr     DoSETWND
         jmp     DoHomeAndClear
 
 ;;; ============================================================
@@ -1424,7 +1433,7 @@ Do40Col:
         php
         jsr     Disable80Col
         jsr     LCAFA
-        jsr     LCE33
+        jsr     DoSETWND
         plp
         bpl     LC95B
         jmp     LCC68
@@ -1527,7 +1536,7 @@ Do80Col:
         php
         jsr     Enable80Col
         jsr     LCAFA
-        jsr     LCE33
+        jsr     DoSETWND
         plp
         bmi     LC9EA
         jmp     LCC18
@@ -1991,10 +2000,10 @@ LCCD7:  jsr     LCDA8
 LCCDC:  stz     $0579
         bra     LCCBD
 LCCE1:  phx
-        ldx     $0479
-        jsr     LCE16
+        ldx     FKEYPTR
+        jsr     ReadAuxRAM
         lda     $0200,x
-        jsr     LCE25
+        jsr     ReadPreviousRAM
         plx
         cmp     #$00
         beq     LCCDC
@@ -2007,8 +2016,8 @@ LCCFB:  bit     $0579
         jmp     LCD85
 
 LCD03:  bit     $05FA
-        bvs     LCD2F
-        bpl     LCD2F
+        bvs     HandleSpecialKeys
+        bpl     HandleSpecialKeys
         phx
         ldx     $06FF
         bit     RDRAMRD
@@ -2029,65 +2038,82 @@ LCD23:  stx     $06FF
         ora     #$80
         plp
         bra     LCD38
-LCD2F:  lda     KBD
+
+;;; ============================================================
+
+HandleSpecialKeys:
+        lda     KBD
         bit     KBDSTRB
-        bit     $C0B4
+        bit     $C0B4           ; Softswitch for Fkeys???
 LCD38:  bpl     LCD41
 LCD3A:  cmp     #$06
         bcc     LCD40
         ora     #$80
 LCD40:  rts
 
+        ;; Deal with special keys
 LCD41:  and     #$7F
-        cmp     #$01
+        cmp     #$01            ; CLRL
         bne     LCD4B
         lda     #$1A
         bra     LCD3A
-LCD4B:  cmp     #$03
+
+LCD4B:  cmp     #$03            ; CLRS
         bne     LCD53
         lda     #$0C
         bra     LCD3A
-LCD53:  cmp     #$04
+
+LCD53:  cmp     #$04            ; HOME
         bne     LCD5B
         lda     #$19
         bra     LCD3A
-LCD5B:  cmp     #$06
+
+        ;; "Macro" keys
+LCD5B:  cmp     #$06            ; RUN
         bne     LCD63
-        lda     #$2C
+        lda     #$2C            ; Like F13
         bra     LCD73
-LCD63:  cmp     #$1F
+
+LCD63:  cmp     #$1F            ; LIST
         bne     LCD6B
-        lda     #$2D
+        lda     #$2D            ; Like F4
         bra     LCD73
-LCD6B:  cmp     #$20
+
+LCD6B:  cmp     #$20            ; F1
         bcc     LCD3A
-        cmp     #$2C
+        cmp     #$2C            ; F12+1
         bcs     LCD3A
-LCD73:  pha
+
+LCD73:  pha                     ; Handle Fkeys
         jsr     LCDA8
         beq     LCD7C
         pla
         bra     LCD3A
+
 LCD7C:  lda     #$FF
         sta     $0579
         pla
-        jsr     LCDBE
+        jsr     FindFKEYDefnOffset
 LCD85:  jsr     LCDA8
         beq     LCD91
 LCD8A:  stz     $0579
         lda     #$A0
         bra     LCD3A
+
 LCD91:  phx
-        ldx     $0479
-        jsr     LCE16
+        ldx     FKEYPTR
+        jsr     ReadAuxRAM
         lda     $0200,x
-        jsr     LCE25
+        jsr     ReadPreviousRAM
         plx
-        inc     $0479
+        inc     FKEYPTR
         cmp     #$00
         beq     LCD8A
         bra     LCD3A
-LCDA8:  jsr     LCE16
+
+;;; ============================================================
+
+LCDA8:  jsr     ReadAuxRAM
         lda     #$00
         phx
         tax
@@ -2096,59 +2122,75 @@ LCDB0:  adc     $0200,x
         inx
         bne     LCDB0
         plx
-        jsr     LCE25
+        jsr     ReadPreviousRAM
         cmp     $04F9
         rts
 
-LCDBE:  phx
+;;; ============================================================
+;;; Given FKEY in A ($20...$2D), get definition offset
+;;; (from Aux $200) into FKEYPTR
+
+FindFKEYDefnOffset:
+        phx
         phy
-        jsr     LCE16
+        jsr     ReadAuxRAM
         sec
-        sbc     #$20
+        sbc     #$20            ; Map F1 to $00, etc
         ldy     #$00
         tax
-        beq     LCDD7
-LCDCB:  lda     $0200,y
-        beq     LCDD3
+        beq     @l4
+@l1:    lda     $0200,y
+        beq     @l2
         iny
-        bra     LCDCB
-LCDD3:  iny
-LCDD4:  dex
-        bne     LCDCB
-LCDD7:  jsr     LCE25
-        sty     $0479
+        bra     @l1
+
+@l2:    iny
+@l3:    dex
+        bne     @l1
+@l4:    jsr     ReadPreviousRAM
+        sty     FKEYPTR
         ply
         plx
         rts
 
-        eor     ($55)
-        lsr     a:$0D
-        jmp     $5349
+;;; ============================================================
+;;; Initialize FKEY definitions
 
-        .byte   $54
-        ora     $FF00
-LCDEC:  sta     WRCARDRAM
+;;; Copied to Aux $200 by `InitFKEYDefinitions`
+SpecialStrings:
+        .byte   "RUN\r", 0
+        .byte   "LIST\r", 0
+        .byte   $FF
+
+InitFKEYDefinitions:
+        sta     WRCARDRAM
         lda     #$00
         tax
-LCDF2:  sta     $0200,x
+@l1:    sta     $0200,x
         inx
         cpx     #$0C
-        bcc     LCDF2
-LCDFA:  lda     LCDD4,x
+        bcc     @l1
+@l2:    lda     SpecialStrings - 12,x
         cmp     #$FF
-        .byte   $F0
-LCE00:  asl     $9D
-        brk
-        .byte   $02
+        beq     @l3
+        sta     $0200,x
         inx
-        bra     LCDFA
-        sta     WRMAINRAM
+        bra     @l2
+
+@l3:    sta     WRMAINRAM
         stz     $0579
+        ;; fall through
+
 LCE0D:  jsr     LCDA8
         sta     $04F9
         jmp     pageC5::DoBankC5
 
-LCE16:  pha
+;;; ============================================================
+
+;;; Read from Aux (saving previous state)
+
+ReadAuxRAM:
+        pha
         lda     RDRAMRD
         sta     RDMAINRAM
         sta     OURCV
@@ -2156,18 +2198,16 @@ LCE16:  pha
         pla
         rts
 
-LCE25:  pha
+;;; Restore previous read bank state
+
+ReadPreviousRAM:
+        pha
         sta     RDMAINRAM
         lda     OURCV
-        bpl     LCE31
+        bpl     @l1
         sta     RDCARDRAM
-LCE31:  pla
+@l1:    pla
         rts
-
-LCE33:  lda     #$00
-        bit     RDTEXT
-        bmi     DoSETWND
-        lda     #$14
 
 ;;; ============================================================
 
@@ -2180,7 +2220,11 @@ LCE33:  lda     #$00
 ;;; ============================================================
 
 DoSETWND:
-        LDXY    SETWND
+        lda     #0              ; set cursor to row 0
+        bit     RDTEXT          ; unless graphics mode
+        bmi     :+
+        lda     #20             ; then use row 20
+:       LDXY    SETWND
         bra     ROMCall
 
 ;;; ============================================================

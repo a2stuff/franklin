@@ -1760,6 +1760,7 @@ InitFKEYDefinitions:
 
 @l3:    sta     WRMAINRAM
         stz     $0579
+        ;; fall through
 
 ;;; ============================================================
 ;;; Unknown Monitor ROM Routine
